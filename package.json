@@ -1,7 +1,7 @@
 {
     "name": "create-rn-project",
-    "version": "1.0.0",
-    "description": "CLI tool to create React Native projects from template",
+    "version": "1.0.1",
+    "description": "CLI tool to create React Native projects use State Management Redux from template",
     "main": "index.js",
     "bin": {
         "create-rn-with-redux-project": "./index.js"
@@ -9,6 +9,9 @@
     "dependencies": {
         "chalk": "^4.1.2",
         "commander": "^11.0.0"
+    },
+    "devDependencies": {
+        "prettier": "^3.1.0"
     },
     "repository": {
         "type": "git",
@@ -20,5 +23,9 @@
         "cli"
     ],
     "author": "Linh Nguyen",
-    "license": "MIT"
+    "license": "MIT",
+    "scripts": {
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    }
 }
