@@ -60,6 +60,8 @@ create-rn-with-redux-project MyApp --bundle-id com.example.myapp --repo https://
 - `-r, --repo <url>`: Specify GitHub repository URL
 - `--skip-install`: Skip installing dependencies
 - `--use-npm`: Use npm instead of yarn for installing dependencies
+- `--skip-env-setup`: Skip environment setup
+- `--skip-git`: Skip git initialization
 - `--help`: Show help information
 
 ### After Creating a Project
@@ -109,7 +111,7 @@ Each environment has its own configuration files and build scripts.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 👨‍💻 Author
 
