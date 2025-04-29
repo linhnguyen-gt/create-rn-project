@@ -50,10 +50,10 @@ let chalk;
 
     function updateIOSSchemes(projectDir, oldName, newName) {
         console.log(chalk.yellow("\n🔄 Updating iOS schemes..."));
-        
+
         const oldSchemesDir = path.join(projectDir, "ios", `${oldName}.xcodeproj/xcshareddata/xcschemes`);
         const newSchemesDir = path.join(projectDir, "ios", `${newName}.xcodeproj/xcshareddata/xcschemes`);
-        
+
         if (fs.existsSync(oldSchemesDir)) {
             console.log(chalk.blue(`Found old schemes directory: ${oldSchemesDir}`));
             const schemeFiles = fs.readdirSync(oldSchemesDir).filter((file) => file.endsWith(".xcscheme"));
@@ -67,12 +67,12 @@ let chalk;
             schemeFiles.forEach((schemeFile) => {
                 const schemeFilePath = path.join(oldSchemesDir, schemeFile);
                 const newSchemeFileName = schemeFile.replace(oldName, newName);
-                
+
                 if (!fs.existsSync(newSchemesDir)) {
                     fs.mkdirSync(newSchemesDir, { recursive: true });
                     console.log(chalk.green(`✅ Created new schemes directory: ${newSchemesDir}`));
                 }
-                
+
                 const newSchemeFilePath = path.join(newSchemesDir, newSchemeFileName);
 
                 let content = fs.readFileSync(schemeFilePath, "utf8");
@@ -86,9 +86,9 @@ let chalk;
             });
         } else if (fs.existsSync(newSchemesDir)) {
             console.log(chalk.yellow(`⚠️ Old schemes directory not found, checking new directory: ${newSchemesDir}`));
-            
+
             const schemeFiles = fs.readdirSync(newSchemesDir).filter((file) => file.endsWith(".xcscheme"));
-            
+
             if (schemeFiles.length === 0) {
                 console.log(chalk.yellow(`⚠️ No scheme files found in new directory: ${newSchemesDir}`));
                 console.log(chalk.blue(`Creating default scheme for ${newName}...`));
@@ -97,24 +97,24 @@ let chalk;
             } else {
                 console.log(chalk.blue(`Found ${schemeFiles.length} scheme files to process in new directory`));
             }
-            
+
             schemeFiles.forEach((schemeFile) => {
                 const schemeFilePath = path.join(newSchemesDir, schemeFile);
-                
+
                 let content = fs.readFileSync(schemeFilePath, "utf8");
                 let contentUpdated = false;
-                
+
                 if (content.includes(oldName)) {
                     content = content.replace(new RegExp(oldName, "g"), newName);
                     fs.writeFileSync(schemeFilePath, content);
                     console.log(chalk.green(`✅ Updated scheme content: ${schemeFile}`));
                     contentUpdated = true;
                 }
-                
+
                 if (schemeFile.includes(oldName)) {
                     const newSchemeFileName = schemeFile.replace(oldName, newName);
                     const newSchemeFilePath = path.join(newSchemesDir, newSchemeFileName);
-                    
+
                     fs.renameSync(schemeFilePath, newSchemeFilePath);
                     console.log(chalk.green(`✅ Renamed scheme: ${schemeFile} -> ${newSchemeFileName}`));
                 } else if (!contentUpdated) {
@@ -129,7 +129,7 @@ let chalk;
             createNewIOSScheme(projectDir, newName);
             return;
         }
-        
+
         if (fs.existsSync(newSchemesDir)) {
             const remainingOldSchemes = fs
                 .readdirSync(newSchemesDir)
@@ -137,29 +137,29 @@ let chalk;
 
             if (remainingOldSchemes.length > 0) {
                 console.log(chalk.yellow(`Found ${remainingOldSchemes.length} remaining old scheme files to process`));
-                
+
                 remainingOldSchemes.forEach((oldScheme) => {
                     const oldSchemeFilePath = path.join(newSchemesDir, oldScheme);
                     const newSchemeFileName = oldScheme.replace(oldName, newName);
                     const newSchemeFilePath = path.join(newSchemesDir, newSchemeFileName);
-                    
+
                     let content = fs.readFileSync(oldSchemeFilePath, "utf8");
                     content = content.replace(new RegExp(oldName, "g"), newName);
-                    
+
                     fs.writeFileSync(newSchemeFilePath, content);
                     console.log(chalk.green(`✅ Created updated scheme: ${newSchemeFileName}`));
-                    
+
                     fs.unlinkSync(oldSchemeFilePath);
                     console.log(chalk.green(`✅ Removed leftover scheme: ${oldScheme}`));
                 });
             } else {
                 console.log(chalk.green(`✅ No remaining old scheme files found`));
             }
-            
+
             const newSchemeFiles = fs
                 .readdirSync(newSchemesDir)
                 .filter((file) => file.includes(newName) && file.endsWith(".xcscheme"));
-                
+
             if (newSchemeFiles.length === 0) {
                 console.log(chalk.yellow(`⚠️ No scheme files with new name found. Creating default scheme...`));
                 createNewIOSScheme(projectDir, newName);
@@ -173,7 +173,7 @@ let chalk;
         console.log(chalk.yellow("\n🔄 Updating iOS project files..."));
 
         const iosDir = path.join(projectDir, "ios");
-        
+
         if (!fs.existsSync(iosDir)) {
             console.log(chalk.yellow(`⚠️ iOS directory not found: ${iosDir}`));
             return;
@@ -352,9 +352,9 @@ let chalk;
         .option("--skip-git", "Skip git initialization")
         .action(async (projectName, options) => {
             console.log(chalk.blue("🚀 Creating a new React Native project from template"));
-            
+
             let dependencyInstallFailed = false;
-            
+
             console.log(chalk.yellow(`\n📦 Creating project ${projectName}...`));
             try {
                 execSync(`git clone https://github.com/linhnguyen-gt/new-react-native.git ${projectName}`, {
@@ -380,7 +380,6 @@ let chalk;
 
                 const appJson = JSON.parse(fs.readFileSync("app.json", "utf8"));
                 appJson.name = projectName;
-                appJson.displayName = projectName;
                 fs.writeFileSync("app.json", JSON.stringify(appJson, null, 2));
 
                 console.log(chalk.yellow("\n🔄 Renaming project comprehensively..."));
@@ -534,11 +533,11 @@ let chalk;
                 if (!options.skipInstall) {
                     console.log(chalk.yellow("\n📥 Installing dependencies..."));
                     try {
-                        const installTimeout = 600000; 
-                        const installOptions = { 
+                        const installTimeout = 600000;
+                        const installOptions = {
                             stdio: "inherit",
                             timeout: installTimeout,
-                            maxBuffer: 1024 * 1024 * 20 
+                            maxBuffer: 1024 * 1024 * 20
                         };
 
                         if (options.useNpm) {
@@ -546,14 +545,14 @@ let chalk;
                             execSync("npm install", installOptions);
                         } else {
                             console.log(chalk.blue("Using yarn to install dependencies..."));
-                            
+
                             try {
                                 execSync("yarn --version", { stdio: "ignore" });
                             } catch (yarnError) {
                                 console.log(chalk.yellow("⚠️ Yarn not found. Installing yarn globally..."));
                                 execSync("npm install -g yarn", { stdio: "inherit" });
                             }
-                            
+
                             try {
                                 execSync("yarn install", installOptions);
                             } catch (yarnInstallError) {
@@ -564,9 +563,7 @@ let chalk;
                         console.log(chalk.green("✅ Dependencies installed successfully"));
                     } catch (error) {
                         dependencyInstallFailed = true;
-                        console.log(
-                            chalk.red("\n⚠️ Failed to install dependencies. Error details:")
-                        );
+                        console.log(chalk.red("\n⚠️ Failed to install dependencies. Error details:"));
                         console.log(chalk.red(error.message || "Unknown error"));
                         console.log(chalk.yellow("\nPossible solutions:"));
                         console.log(chalk.yellow("1. Check your internet connection"));
@@ -655,7 +652,7 @@ let chalk;
                     `ios/NewReactNative.xcodeproj/xcshareddata/xcschemes/NewReactNative.xcscheme`
                 ];
 
-                oldSchemeFiles.forEach(schemeFile => {
+                oldSchemeFiles.forEach((schemeFile) => {
                     const fullPath = path.join(process.cwd(), schemeFile);
                     if (fs.existsSync(fullPath)) {
                         fs.unlinkSync(fullPath);
@@ -674,7 +671,9 @@ let chalk;
                     console.log("2. Install dependencies:");
                     console.log("   - With yarn: yarn install");
                     console.log("   - With npm: npm install");
-                    console.log("   - If you encounter issues: yarn install --network-timeout 600000 or npm install --legacy-peer-deps");
+                    console.log(
+                        "   - If you encounter issues: yarn install --network-timeout 600000 or npm install --legacy-peer-deps"
+                    );
                     console.log("3. Set up environment: yarn env:setup");
                     console.log("4. Run the app: yarn ios or yarn android");
                 } else if (dependencyInstallFailed) {
@@ -693,7 +692,9 @@ let chalk;
 
                 console.log(chalk.blue("\n🐞 Troubleshooting:"));
                 console.log("- If you encounter issues with iOS, try: cd ios && pod install");
-                console.log("- For Android issues, check your Android SDK setup and try: cd android && ./gradlew clean");
+                console.log(
+                    "- For Android issues, check your Android SDK setup and try: cd android && ./gradlew clean"
+                );
                 console.log("- For more help, visit: https://github.com/linhnguyen-gt/new-react-native/issues");
             } catch (error) {
                 console.error(chalk.red("\n❌ Error creating project:"), error);

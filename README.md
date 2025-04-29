@@ -4,7 +4,7 @@
 </div>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React_Native-Latest-blue?style=for-the-badge&logo=react&logoColor=white" alt="react-native" />
+  <img src="https://img.shields.io/badge/React_Native-v0.78.2-blue?style=for-the-badge&logo=react&logoColor=white" alt="react-native" />
   <img src="https://img.shields.io/badge/TypeScript-Integrated-blue?style=for-the-badge&logo=typescript&logoColor=white" alt="typescript" />
   <img src="https://img.shields.io/badge/Redux-Toolkit-764ABC?style=for-the-badge&logo=redux&logoColor=white" alt="redux" />
 </p>
