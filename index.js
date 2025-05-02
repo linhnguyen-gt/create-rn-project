@@ -258,6 +258,79 @@ let chalk;
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "00E356ED1AD99517003FC87E"
+               BuildableName = "${projectName}Tests.xctest"
+               BlueprintName = "${projectName}Tests"
+               ReferencedContainer = "container:${projectName}.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
+            BuildableName = "${projectName}.app"
+            BlueprintName = "${projectName}"
+            ReferencedContainer = "container:${projectName}.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
+            BuildableName = "${projectName}.app"
+            BlueprintName = "${projectName}"
+            ReferencedContainer = "container:${projectName}.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
+               BuildableName = "${projectName}.app"
+               BlueprintName = "${projectName}"
+               ReferencedContainer = "container:${projectName}.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -343,25 +416,91 @@ let chalk;
     program
         .name("create-rn-with-redux-project")
         .description("Create a new React Native project from template")
-        .argument("<project-name>", "Name of the project")
+        .argument('<project-directory>', 'Project name or name@branch')
         .option("-b, --bundle-id <id>", "Bundle identifier", "com.example.app")
         .option("-r, --repo <url>", "GitHub repository URL")
         .option("--skip-install", "Skip installing dependencies")
         .option("--use-npm", "Use npm instead of yarn for installing dependencies")
         .option("--skip-env-setup", "Skip environment setup")
         .option("--skip-git", "Skip git initialization")
-        .action(async (projectName, options) => {
+        .action(async (projectDirectory, options) => {
+            let projectName, branchName;
+            
+            // Validate and parse project directory
+            if (!projectDirectory) {
+                throw new Error('Project name is required');
+            }
+
+            // Remove any leading/trailing whitespace
+            projectDirectory = projectDirectory.trim();
+
+            // Check if project directory includes branch specification
+            if (projectDirectory.includes('@')) {
+                const parts = projectDirectory.split('@');
+                projectName = parts[0].trim();
+                branchName = parts[1].trim();
+
+                // Validate project name
+                if (!projectName) {
+                    throw new Error('Project name cannot be empty when using @branch syntax');
+                }
+
+                // Validate branch name
+                if (!branchName) {
+                    throw new Error('Branch name cannot be empty when using @branch syntax');
+                }
+
+                // Validate branch format
+                if (!branchName.match(/^(main|rn-\d+\.\d+\.\d+|rn-\d+\.\d+\.xx)$/)) {
+                    throw new Error('Invalid branch format. Must be "main" or "rn-X.Y.Z" or "rn-X.Y.xx"');
+                }
+            } else {
+                projectName = projectDirectory;
+                branchName = 'main';
+            }
+
+            // Validate project name format
+            if (!projectName.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
+                throw new Error('Project name must start with a letter and can only contain letters, numbers, dashes, and underscores');
+            }
+
+            console.log(chalk.blue(`🔍 Validating inputs...`));
+            console.log(chalk.blue(`  • Project Name: ${projectName}`));
+            console.log(chalk.blue(`  • Branch: ${branchName}`));
+            console.log();
+
             console.log(chalk.blue("🚀 Creating a new React Native project from template"));
+            console.log(chalk.yellow(`\n📦 Creating project ${projectName} from branch ${branchName}...`));
 
             let dependencyInstallFailed = false;
 
-            console.log(chalk.yellow(`\n📦 Creating project ${projectName}...`));
             try {
-                execSync(`git clone https://github.com/linhnguyen-gt/new-react-native.git ${projectName}`, {
-                    stdio: "inherit"
-                });
+                const currentDir = process.cwd();
+                const projectPath = path.join(currentDir, projectName);
 
-                process.chdir(projectName);
+                // Ensure project directory doesn't exist
+                if (fs.existsSync(projectPath)) {
+                    throw new Error(`Directory ${projectName} already exists`);
+                }
+
+                // Clone the template repository with the specified name
+                execSync(`git clone -b ${branchName} https://github.com/linhnguyen-gt/new-react-native.git "${projectName}"`, {
+                    stdio: "inherit",
+                    cwd: currentDir
+                });
+                
+                // Verify the directory exists
+                if (!fs.existsSync(projectPath)) {
+                    throw new Error(`Project directory ${projectPath} was not created successfully`);
+                }
+                
+                process.chdir(projectPath);
+                
+                // Verify package.json exists
+                const packageJsonPath = path.join(projectPath, 'package.json');
+                if (!fs.existsSync(packageJsonPath)) {
+                    throw new Error(`package.json not found in ${projectPath}`);
+                }
 
                 execSync("rm -rf .git", { stdio: "inherit" });
                 if (fs.existsSync(".env.vault")) {
@@ -482,11 +621,21 @@ let chalk;
 
                 const appDelegatePath = `${iosDir}/${projectName}/AppDelegate.swift`;
                 if (fs.existsSync(appDelegatePath)) {
-                    replaceInFile(
-                        appDelegatePath,
-                        /self\.moduleName = "NewReactNative"/g,
-                        `self.moduleName = "${projectName}"`
-                    );
+                    const isRN079OrHigher = branchName && (branchName.startsWith('rn-0.79') || branchName.startsWith('rn-0.8'));
+                    
+                    if (isRN079OrHigher) {
+                        replaceInFile(
+                            appDelegatePath,
+                            /withModuleName: "NewReactNative"/g,
+                            `withModuleName: "${projectName}"`
+                        );
+                    } else {
+                        replaceInFile(
+                            appDelegatePath,
+                            /self\.moduleName = "NewReactNative"/g,
+                            `self.moduleName = "${projectName}"`
+                        );
+                    }
                 }
 
                 const xcschemeDir = `${iosDir}/${projectName}.xcodeproj/xcshareddata/xcschemes`;

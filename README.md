@@ -4,7 +4,6 @@
 </div>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React_Native-v0.78.2-blue?style=for-the-badge&logo=react&logoColor=white" alt="react-native" />
   <img src="https://img.shields.io/badge/TypeScript-Integrated-blue?style=for-the-badge&logo=typescript&logoColor=white" alt="typescript" />
   <img src="https://img.shields.io/badge/Redux-Toolkit-764ABC?style=for-the-badge&logo=redux&logoColor=white" alt="redux" />
 </p>
@@ -47,11 +46,14 @@ Make sure you have the following installed:
 # Basic usage
 create-rn-with-redux-project MyApp
 
+# With specific React Native version branch
+create-rn-with-redux-project MyApp@rn-0.78.xx
+
 # With custom bundle ID
 create-rn-with-redux-project MyApp -b com.example.myapp
 
 # With all options
-create-rn-with-redux-project MyApp --bundle-id com.example.myapp --repo https://github.com/yourusername/your-repo.git --skip-install --use-npm
+create-rn-with-redux-project MyApp@rn-0.78.xx --bundle-id com.example.myapp --repo https://github.com/yourusername/your-repo.git --skip-install --use-npm
 ```
 
 ### Available Options
