@@ -52,13 +52,22 @@ let chalk;
                     branchName = 'main';
                 }
 
+                if (!/^[A-Z][a-z]*(?:[A-Z][a-z]*)*$/.test(projectName)) {
+                    throw new Error(
+                        'Invalid project name. Name must be in PascalCase:\n' +
+                        '  • Start with uppercase letter\n' +
+                        '  • Each word must start with uppercase\n' +
+                        '  • All other letters must be lowercase\n' +
+                        '  • No numbers or special characters\n\n' +
+                        'Examples:\n' +
+                        '  ✅ Good: MyApp, MyReactApp\n' +
+                        '  ❌ Bad: myApp, MYAPP, myapp, My-App, MyApp1, my_app'
+                    );
+                }
+
                 if (projectName.toLowerCase() === 'newreactnative' || 
                     projectName.toLowerCase() === 'new-react-native') {
                     throw new Error('Cannot use reserved name "NewReactNative" or its variations');
-                }
-
-                if (!projectName.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-                    throw new Error('Project name must start with a letter and can only contain letters, numbers, dashes, and underscores');
                 }
 
                 logInfo(`🔍 Validating inputs...`);
