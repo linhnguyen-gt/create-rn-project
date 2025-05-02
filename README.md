@@ -49,11 +49,36 @@ create-rn-with-redux-project MyApp
 # With specific React Native version branch
 create-rn-with-redux-project MyApp@rn-0.78.xx
 
-# With custom bundle ID
+# With custom bundle ID (IMPORTANT: use -b or --bundle-id flag)
 create-rn-with-redux-project MyApp -b com.example.myapp
+# OR
+create-rn-with-redux-project MyApp --bundle-id com.example.myapp
 
 # With all options
 create-rn-with-redux-project MyApp@rn-0.78.xx --bundle-id com.example.myapp --repo https://github.com/yourusername/your-repo.git --skip-install --use-npm
+```
+
+❗ **Note**: To set a custom bundle identifier, you must use the `-b` or `--bundle-id` flag. For example:
+- ✅ Correct: `create-rn-with-redux-project MyApp -b com.example.myapp`
+- ❌ Incorrect: `create-rn-with-redux-project MyApp com.example.myapp`
+
+### Available React Native Versions
+
+- `main` - Latest stable version (default)
+- `rn-0.78.xx` - React Native 0.78.x
+- `rn-0.79.xx` - React Native 0.79.x
+
+Examples:
+
+```bash
+# Use React Native 0.78.x
+create-rn-with-redux-project MyApp@rn-0.78.xx
+
+# Use React Native 0.79.x
+create-rn-with-redux-project MyApp@rn-0.79.xx
+
+# Use latest stable version
+create-rn-with-redux-project MyApp
 ```
 
 ### Available Options
