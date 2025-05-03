@@ -32,7 +32,7 @@ Each architecture includes:
 
 ```bash
 # Install globally from the official repository
-npm install -g https://github.com/linhnguyen-gt/create-rn-with-redux-project.git
+npm install -g https://github.com/linhnguyen-gt/create-rn-project.git
 ```
 
 ### Requirements
