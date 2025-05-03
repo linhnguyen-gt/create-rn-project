@@ -8,6 +8,10 @@ const { updateIOSSchemes } = require("./schemeManager");
 function updateIOSProjectFiles(projectDir, oldName, newName) {
     logStep("Updating iOS project files...");
 
+    if (!/^[A-Z][a-z]*(?:[A-Z][a-z]*)*$/.test(newName)) {
+        throw new Error(`Invalid iOS project name "${newName}". Name must be in PascalCase format (e.g., MyApp, MyReactApp).`);
+    }
+
     const iosDir = path.join(projectDir, "ios");
 
     if (!fs.existsSync(iosDir)) {
@@ -15,7 +19,6 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
         return;
     }
 
-    // Handle directory renames
     if (fs.existsSync(`${iosDir}/${oldName}`)) {
         execSync(`mv ${iosDir}/${oldName} ${iosDir}/${newName}`, { stdio: "inherit" });
     }
@@ -33,24 +36,20 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
         execSync(`mv ${iosDir}/${oldName}.xcworkspace ${iosDir}/${newName}.xcworkspace`, { stdio: "inherit" });
     }
 
-    // Update project.pbxproj for all environments
     const pbxprojPath = path.join(iosDir, `${newName}.xcodeproj/project.pbxproj`);
     if (fs.existsSync(pbxprojPath)) {
         let content = fs.readFileSync(pbxprojPath, "utf8");
         
-        // Update dev bundle ID
         content = content.replace(
             /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+";/g,
             `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}";`
         );
 
-        // Update staging bundle ID
         content = content.replace(
             /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.stg";/g,
             `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.stg";`
         );
 
-        // Update production bundle ID
         content = content.replace(
             /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.pro";/g,
             `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.pro";`
@@ -60,7 +59,6 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
         logSuccess("Updated project.pbxproj with all environment configurations");
     }
 
-    // Update Info.plist
     const infoPlistPath = path.join(iosDir, `${newName}/Info.plist`);
     if (fs.existsSync(infoPlistPath)) {
         replaceInFile(
@@ -71,7 +69,6 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
         logSuccess("Updated Info.plist");
     }
 
-    // Update AppDelegate.swift
     const appDelegatePath = path.join(iosDir, newName, "AppDelegate.swift");
     if (fs.existsSync(appDelegatePath)) {
         const branchName = process.env.BRANCH_NAME;
@@ -93,7 +90,6 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
         logSuccess("Updated AppDelegate.swift");
     }
 
-    // Update Podfile
     const podfilePath = path.join(iosDir, "Podfile");
     if (fs.existsSync(podfilePath)) {
         logStep("Updating Podfile...");
@@ -105,7 +101,6 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
         logSuccess("Podfile updated successfully");
     }
 
-    // Update schemes
     updateIOSSchemes(projectDir, oldName, newName);
 
     const podsDir = path.join(iosDir, "Pods");

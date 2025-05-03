@@ -7,6 +7,14 @@ const { logSuccess, logWarning, logInfo, logStep } = require("../utils/logUtils"
 function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName) {
     logStep("Updating Android files...");
 
+    if (!/^[A-Z][a-z]*(?:[A-Z][a-z]*)*$/.test(projectName)) {
+        throw new Error(`Invalid Android project name "${projectName}". Name must be in PascalCase format (e.g., MyApp, MyReactApp).`);
+    }
+
+    if (!/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$/.test(newPackageId)) {
+        throw new Error(`Invalid Android package ID "${newPackageId}". Package ID must follow Java package naming conventions (e.g., com.example.myapp).`);
+    }
+
     const androidSrcDir = path.join(projectDir, "android/app/src/main/java/com");
     const oldPath = `${androidSrcDir}/newreactnative`;
     const packagePath = newPackageId.split(".").slice(1).join("/");

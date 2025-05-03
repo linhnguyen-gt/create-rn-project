@@ -69,12 +69,26 @@ let chalk;
                     branchName = 'main';
                 }
 
+                if (!/^[A-Z][a-z]*(?:[A-Z][a-z]*)*$/.test(projectName)) {
+                    throw new Error(
+                        'Invalid project name. Name must be in PascalCase:\n' +
+                        '  • Start with uppercase letter\n' +
+                        '  • Each word must start with uppercase\n' +
+                        '  • All other letters must be lowercase\n' +
+                        '  • No numbers or special characters\n\n' +
+                        'Examples:\n' +
+                        '  ✅ Good: MyApp, MyReactApp\n' +
+                        '  ❌ Bad: myApp, MYAPP, myapp, My-App, MyApp1, my_app'
+                    );
+                }
+
                 if (projectName.toLowerCase() === 'newreactnative' || 
                     projectName.toLowerCase() === 'new-react-native' ||
                     projectName.toLowerCase() === 'newreactnativezustandrn' ||
                     projectName.toLowerCase() === 'new-react-native-zustand-rn') {
                     throw new Error('Cannot use reserved template names');
                 }
+
 
                 if (!projectName.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
                     throw new Error('Project name must start with a letter and can only contain letters, numbers, dashes, and underscores');
@@ -107,7 +121,7 @@ let chalk;
                 }
 
                 const selectedArch = ARCHITECTURES[architecture];
-                
+
                 logInfo(`🔍 Validating inputs...`);
                 logInfo(`  • Project Name: ${projectName}`);
                 logInfo(`  • Branch: ${branchName}`);
