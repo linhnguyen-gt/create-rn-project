@@ -39,7 +39,7 @@ npm install -g https://github.com/linhnguyen-gt/create-rn-project.git
 
 Make sure you have the following installed:
 
-- Node.js (v16 or newer)
+- Node.js (v20+ or newer)
 - npm or yarn
 - Git
 - React Native development environment set up (for running the generated project)
