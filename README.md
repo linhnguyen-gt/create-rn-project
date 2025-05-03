@@ -1,6 +1,6 @@
 <div align="center">
   <h1>🚀 create-rn-project</h1>
-  <p>A powerful CLI tool to create React Native projects with multiple architecture options</p>
+  <p>A powerful CLI tool to create React Native projects with multiple architecture options. Quickly scaffold production-ready apps with Redux or Zustand, TypeScript, multi-environment support, and NativeWind styling.</p>
 </div>
 
 <p align="center">
