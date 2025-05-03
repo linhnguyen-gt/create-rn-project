@@ -10,43 +10,55 @@ function setupNewProject(projectDir, projectName, oldName, bundleId) {
     logStep("Setting up new project...");
 
     try {
-        // Update package.json and app.json
         const packageJsonPath = path.join(projectDir, "package.json");
         if (fs.existsSync(packageJsonPath)) {
-            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-            packageJson.name = projectName;
-            fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-            logSuccess("Updated package.json");
+            try {
+                const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+                
+                packageJson.name = projectName;
+                
+                fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+                logSuccess("Updated package.json");
+            } catch (error) {
+                logError("Error updating package.json", error);
+            }
         }
 
         const appJsonPath = path.join(projectDir, "app.json");
         if (fs.existsSync(appJsonPath)) {
-            const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf8"));
-            appJson.name = projectName;
-            fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2));
-            logSuccess("Updated app.json");
+            try {
+                const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf8"));
+                
+                appJson.name = projectName;
+                
+                if (appJson.displayName) {
+                    appJson.displayName = projectName;
+                }
+                
+                fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2));
+                logSuccess("Updated app.json");
+            } catch (error) {
+                logError("Error updating app.json", error);
+            }
         }
 
         const fileExtensions = [
             ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".swift",
             ".m", ".h", ".gradle", ".pbxproj", ".plist", ".xml",
-            ".json", ".yaml", ".yml", ".xcscheme", ".xcworkspacedata",
+            ".yaml", ".yml", ".xcscheme", ".xcworkspacedata",
             ".storyboard", ".xib", ".podspec"
         ];
 
-        // Replace project name occurrences
+    
         findAndReplaceInDirectory(projectDir, /NewReactNative/g, projectName, fileExtensions);
         findAndReplaceInDirectory(projectDir, /newreactnative/g, projectName.toLowerCase(), fileExtensions);
 
-        // Format bundle ID correctly for each platform and environment
         const baseAndroidId = bundleId || `com.${projectName.toLowerCase()}`;
         const baseIosId = bundleId || projectName.toLowerCase();
 
-        // Update Android configuration with proper bundle IDs for each environment
         logStep("Updating Android configuration...");
         updateAndroidFiles(projectDir, "com.newreactnative", baseAndroidId, projectName);
 
-        // Update iOS configuration with proper bundle IDs for each environment
         logStep("Updating iOS configuration...");
         updateIOSProjectFiles(projectDir, oldName, projectName, baseIosId);
 
