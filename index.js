@@ -4,22 +4,39 @@ const { program } = require("commander");
 const { execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+const { Select } = require("enquirer");
 
 const { logSuccess, logError, logWarning, logInfo } = require("./src/utils/logUtils");
 const { setupNewProject, cleanupProject } = require("./src/project/projectManager");
 const { installDependencies, setupEnvironment } = require("./src/project/dependencyManager");
 const { initializeGit, setupGitRemote } = require("./src/project/gitManager");
 
+const ARCHITECTURES = {
+  redux: {
+    name: "Redux + Redux Saga",
+    repo: "https://github.com/linhnguyen-gt/new-react-native.git",
+    description: "State management with Redux and Redux Saga",
+    originalName: "NewReactNative"
+  },
+  zustand: {
+    name: "Zustand + React Query",
+    repo: "https://github.com/linhnguyen-gt/new-react-native-zustand-react-query.git",
+    description: "State management with Zustand and data fetching with React Query",
+    originalName: "NewReactNativeZustandRN"
+  }
+};
+
 let chalk;
 (async () => {
     chalk = (await import("chalk")).default;
 
     program
-        .name("create-rn-with-redux-project")
+        .name("create-rn-project")
         .description("Create a new React Native project from template")
         .argument('<project-directory>', 'Project name or name@branch')
         .option("-b, --bundle-id <id>", "Bundle identifier", "com.example.app")
         .option("-r, --repo <url>", "GitHub repository URL")
+        .option("-a, --arch <architecture>", "Project architecture (redux, zustand)")
         .option("--skip-install", "Skip installing dependencies")
         .option("--use-npm", "Use npm instead of yarn for installing dependencies")
         .option("--skip-env-setup", "Skip environment setup")
@@ -53,20 +70,51 @@ let chalk;
                 }
 
                 if (projectName.toLowerCase() === 'newreactnative' || 
-                    projectName.toLowerCase() === 'new-react-native') {
-                    throw new Error('Cannot use reserved name "NewReactNative" or its variations');
+                    projectName.toLowerCase() === 'new-react-native' ||
+                    projectName.toLowerCase() === 'newreactnativezustandrn' ||
+                    projectName.toLowerCase() === 'new-react-native-zustand-rn') {
+                    throw new Error('Cannot use reserved template names');
                 }
 
                 if (!projectName.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
                     throw new Error('Project name must start with a letter and can only contain letters, numbers, dashes, and underscores');
                 }
 
+                let architecture = options.arch ? options.arch.toLowerCase() : null;
+                
+                if (!architecture) {
+                    console.log();
+                    logInfo("🏗️ Select an architecture for your project:");
+                    
+                    const archOptions = Object.keys(ARCHITECTURES).map(key => ({
+                        name: key,
+                        message: `${ARCHITECTURES[key].name} - ${ARCHITECTURES[key].description}`,
+                        value: key
+                    }));
+                    
+                    const prompt = new Select({
+                        name: 'architecture',
+                        message: 'Choose an architecture:',
+                        choices: archOptions
+                    });
+                    
+                    architecture = await prompt.run();
+                    console.log();
+                }
+
+                if (!ARCHITECTURES[architecture]) {
+                    throw new Error(`Invalid architecture "${architecture}". Available architectures: ${Object.keys(ARCHITECTURES).join(', ')}`);
+                }
+
+                const selectedArch = ARCHITECTURES[architecture];
+                
                 logInfo(`🔍 Validating inputs...`);
                 logInfo(`  • Project Name: ${projectName}`);
                 logInfo(`  • Branch: ${branchName}`);
+                logInfo(`  • Architecture: ${selectedArch.name}`);
                 console.log();
 
-                logInfo("🚀 Creating a new React Native project from template");
+                logInfo(`🚀 Creating a new React Native project with ${selectedArch.name}`);
                 logSuccess(`\n📦 Creating project ${projectName} from branch ${branchName}...`);
 
                 const currentDir = process.cwd();
@@ -77,15 +125,17 @@ let chalk;
                 }
 
                 execSync(
-                    `git clone -b ${branchName} https://github.com/linhnguyen-gt/new-react-native.git "${projectName}"`,
+                    `git clone -b ${branchName} ${selectedArch.repo} "${projectName}"`,
                     { stdio: "inherit", cwd: currentDir }
                 );
 
                 process.chdir(projectPath);
 
                 process.env.BRANCH_NAME = branchName;
+                process.env.ARCHITECTURE = architecture;
 
-                setupNewProject(projectPath, projectName, "NewReactNative", options.bundleId);
+                const originalProjectName = selectedArch.originalName;
+                setupNewProject(projectPath, projectName, originalProjectName, options.bundleId);
 
                 if (!options.skipInstall) {
                     dependencyInstallFailed = !installDependencies(options.useNpm);
@@ -103,7 +153,7 @@ let chalk;
 
                 cleanupProject(projectPath);
 
-                logSuccess(`\n✅ Project ${projectName} created successfully!`);
+                logSuccess(`\n✅ Project ${projectName} created successfully with ${selectedArch.name} architecture!`);
                 logInfo("\n📝 Next steps:");
                 console.log(`1. cd ${projectName}`);
 
@@ -124,7 +174,14 @@ let chalk;
 
                 logInfo("\n📚 Documentation:");
                 console.log("- React Native: https://reactnative.dev/docs/getting-started");
-                console.log("- Redux Toolkit: https://redux-toolkit.js.org/introduction/getting-started");
+                
+                if (architecture === 'redux') {
+                    console.log("- Redux Toolkit: https://redux-toolkit.js.org/introduction/getting-started");
+                } else if (architecture === 'zustand') {
+                    console.log("- Zustand: https://github.com/pmndrs/zustand");
+                    console.log("- React Query: https://tanstack.com/query/latest/docs/react/overview");
+                }
+                
                 console.log("- React Navigation: https://reactnavigation.org/docs/getting-started");
                 console.log("- Expo: https://docs.expo.dev/get-started/installation/");
                 console.log("- Expo CLI: https://docs.expo.dev/workflow/expo-cli/");
