@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
 const { replaceInFile } = require("../utils/fileUtils");
 const { logSuccess, logWarning, logInfo, logStep, logError } = require("../utils/logUtils");
 
@@ -208,8 +207,59 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
             const settingsPath = path.join(projectDir, "android/settings.gradle");
             if (fs.existsSync(settingsPath)) {
                 let content = fs.readFileSync(settingsPath, "utf8");
+                
+                content = content.replace(
+                    /rootProject\.name\s*=\s*['"][^'"]*['"]/g,
+                    `rootProject.name = '${projectName}'`
+                );
+                
                 fs.writeFileSync(settingsPath, content);
                 logSuccess("Updated settings.gradle");
+            }
+
+            try {                
+                const searchAndReplaceZustandRNQ = (dir) => {
+                    const entries = fs.readdirSync(dir, { withFileTypes: true });
+                    for (const entry of entries) {
+                        const fullPath = path.join(dir, entry.name);
+                        
+                        if (fullPath.includes('node_modules') || fullPath.includes('.git') || 
+                            fullPath.includes('build') || fullPath.includes('.gradle')) {
+                            continue;
+                        }
+                        
+                        if (entry.isDirectory()) {
+                            searchAndReplaceZustandRNQ(fullPath);
+                        } else {
+                            const relevantExtensions = [
+                                '.kt', '.java', '.xml', '.gradle', '.properties', 
+                                '.json', '.pro', '.txt', '.md', '.yaml', '.yml'
+                            ];
+                            
+                            if (relevantExtensions.some(ext => entry.name.toLowerCase().endsWith(ext))) {
+                                try {
+                                    let content = fs.readFileSync(fullPath, "utf8");
+                                    
+                                    if (content.toLowerCase().includes("zustandrnq")) {
+                                        const modifiedContent = content
+                                            .replace(/[Zz]ustandRNQ/g, "")
+                                            .replace(/zustandrnq/gi, "");
+                                            
+                                        if (content !== modifiedContent) {
+                                            fs.writeFileSync(fullPath, modifiedContent);
+                                        }
+                                    }
+                                } catch (error) {
+                                }
+                            }
+                        }
+                    }
+                };
+                
+                const androidDir = path.join(projectDir, "android");
+                searchAndReplaceZustandRNQ(androidDir);
+            } catch (error) {
+                logError(`Error during deep scan: ${error.message}`);
             }
 
         } catch (error) {

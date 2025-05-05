@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
 const { replaceInFile } = require("../utils/fileUtils");
-const { logSuccess, logWarning, logInfo, logStep, logError } = require("../utils/logUtils");
+const { logSuccess, logWarning, logStep, logError } = require("../utils/logUtils");
 const { updateIOSSchemes } = require("./schemeManager");
 
 const TEMPLATE_NAMES = {
@@ -207,6 +207,47 @@ function updateIOSProjectFiles(projectDir, oldName, newName, newPackageId, archi
         } catch (error) {
             logError(`Error updating Pods directory: ${error.message}`);
         }
+    }
+
+    try {        
+        const searchAndReplaceZustandRNQ = (dir) => {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                
+                if (fullPath.includes('node_modules') || fullPath.includes('.git')) {
+                    continue;
+                }
+                
+                if (entry.isDirectory()) {
+                    searchAndReplaceZustandRNQ(fullPath);
+                } else {
+                    const textFileExtensions = [
+                        '.h', '.m', '.swift', '.plist', '.pbxproj', '.xcscheme',
+                        '.xcsettings', '.xcconfig', '.storyboard', '.xib', '.json',
+                        '.strings', '.entitlements', '.xcworkspacedata', '.podspec'
+                    ];
+                    
+                    if (textFileExtensions.some(ext => entry.name.toLowerCase().endsWith(ext))) {
+                        try {
+                            let content = fs.readFileSync(fullPath, "utf8");
+                            
+                            if (content.includes("ZustandRNQ")) {
+                                const modifiedContent = content.replace(/ZustandRNQ/g, "");
+                                if (content !== modifiedContent) {
+                                    fs.writeFileSync(fullPath, modifiedContent);
+                                }
+                            }
+                        } catch (error) {
+                        }
+                    }
+                }
+            }
+        };
+        
+        searchAndReplaceZustandRNQ(iosDir);
+    } catch (error) {
+        logError(`Error during deep scan: ${error.message}`);
     }
 
     logSuccess("All iOS files updated successfully");
