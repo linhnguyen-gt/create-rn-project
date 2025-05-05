@@ -6,16 +6,40 @@ const { updateAndroidFiles } = require("../android/androidManager");
 const { updateIOSProjectFiles } = require("../ios/iosManager");
 const { findAndReplaceInDirectory } = require("../utils/fileUtils");
 
-function setupNewProject(projectDir, projectName, oldName, bundleId) {
+function setupNewProject(projectDir, projectName, oldName, bundleId, architecture) {
     logStep("Setting up new project...");
 
     try {
+        const baseAppId = `com.${projectName.toLowerCase()}`;
+        
         const packageJsonPath = path.join(projectDir, "package.json");
         if (fs.existsSync(packageJsonPath)) {
             try {
                 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
                 
                 packageJson.name = projectName;
+                
+                if (packageJson.scripts) {
+                    let oldAppId = "com.newreactnative";
+                    if (architecture === "zustand") {
+                        oldAppId = "com.newreactnativezustandrnq";
+                    }
+                    
+                    if (packageJson.scripts.android) {
+                        packageJson.scripts.android = packageJson.scripts.android
+                            .replace(new RegExp(oldAppId, 'g'), baseAppId);
+                    }
+                    
+                    if (packageJson.scripts["android:stg"]) {
+                        packageJson.scripts["android:stg"] = packageJson.scripts["android:stg"]
+                            .replace(new RegExp(`${oldAppId}\\.stg`, 'g'), `${baseAppId}.stg`);
+                    }
+                    
+                    if (packageJson.scripts["android:pro"]) {
+                        packageJson.scripts["android:pro"] = packageJson.scripts["android:pro"]
+                            .replace(new RegExp(`${oldAppId}\\.production`, 'g'), `${baseAppId}.prod`);
+                    }
+                }
                 
                 fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
                 logSuccess("Updated package.json");
@@ -53,11 +77,11 @@ function setupNewProject(projectDir, projectName, oldName, bundleId) {
         findAndReplaceInDirectory(projectDir, /NewReactNative/g, projectName, fileExtensions);
         findAndReplaceInDirectory(projectDir, /newreactnative/g, projectName.toLowerCase(), fileExtensions);
 
-        const baseAndroidId = bundleId || `com.${projectName.toLowerCase()}`;
+        const baseAndroidId = bundleId || baseAppId;
         const baseIosId = bundleId || projectName.toLowerCase();
 
         logStep("Updating Android configuration...");
-        updateAndroidFiles(projectDir, "com.newreactnative", baseAndroidId, projectName);
+        updateAndroidFiles(projectDir, "com.newreactnative", baseAndroidId, projectName, architecture);
 
         logStep("Updating iOS configuration...");
         updateIOSProjectFiles(projectDir, oldName, projectName, baseIosId);

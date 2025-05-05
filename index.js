@@ -149,7 +149,7 @@ let chalk;
                 process.env.ARCHITECTURE = architecture;
 
                 const originalProjectName = selectedArch.originalName;
-                setupNewProject(projectPath, projectName, originalProjectName, options.bundleId);
+                setupNewProject(projectPath, projectName, originalProjectName, options.bundleId, architecture);
 
                 if (!options.skipInstall) {
                     dependencyInstallFailed = !installDependencies(options.useNpm);
