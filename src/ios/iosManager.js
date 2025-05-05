@@ -2,10 +2,15 @@ const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
 const { replaceInFile } = require("../utils/fileUtils");
-const { logSuccess, logWarning, logInfo, logStep } = require("../utils/logUtils");
+const { logSuccess, logWarning, logInfo, logStep, logError } = require("../utils/logUtils");
 const { updateIOSSchemes } = require("./schemeManager");
 
-function updateIOSProjectFiles(projectDir, oldName, newName) {
+const TEMPLATE_NAMES = {
+    redux: "NewReactNative",
+    zustand: "NewReactNativeZustandRNQ"
+};
+
+function updateIOSProjectFiles(projectDir, oldName, newName, newPackageId, architecture) {
     logStep("Updating iOS project files...");
 
     if (!/^[A-Z][a-z]*(?:[A-Z][a-z]*)*$/.test(newName)) {
@@ -18,27 +23,59 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
         logWarning(`iOS directory not found: ${iosDir}`);
         return;
     }
+    
+    let originalOldName = oldName;
+    if (architecture && TEMPLATE_NAMES[architecture]) {
+        originalOldName = TEMPLATE_NAMES[architecture];
+    }
+    
+    const possibleOldDirs = [originalOldName];
+    if (originalOldName !== oldName) {
+        possibleOldDirs.push(oldName);
+    }
 
-    if (fs.existsSync(`${iosDir}/${oldName}`)) {
-        execSync(`mv ${iosDir}/${oldName} ${iosDir}/${newName}`, { stdio: "inherit" });
-    }
-    if (fs.existsSync(`${iosDir}/${oldName}-Staging`)) {
-        execSync(`mv ${iosDir}/${oldName}-Staging ${iosDir}/${newName}-Staging`, { stdio: "inherit" });
-    }
-    if (fs.existsSync(`${iosDir}/${oldName}-Production`)) {
-        execSync(`mv ${iosDir}/${oldName}-Production ${iosDir}/${newName}-Production`, { stdio: "inherit" });
+    for (const oldDir of possibleOldDirs) {
+        if (fs.existsSync(`${iosDir}/${oldDir}`)) {
+            execSync(`mv "${iosDir}/${oldDir}" "${iosDir}/${newName}"`, { stdio: "inherit" });
+            break;
+        }
     }
 
-    if (fs.existsSync(`${iosDir}/${oldName}.xcodeproj`)) {
-        execSync(`mv ${iosDir}/${oldName}.xcodeproj ${iosDir}/${newName}.xcodeproj`, { stdio: "inherit" });
+    for (const oldDir of possibleOldDirs) {
+        if (fs.existsSync(`${iosDir}/${oldDir}-Staging`)) {
+            execSync(`mv "${iosDir}/${oldDir}-Staging" "${iosDir}/${newName}-Staging"`, { stdio: "inherit" });
+            break;
+        }
     }
-    if (fs.existsSync(`${iosDir}/${oldName}.xcworkspace`)) {
-        execSync(`mv ${iosDir}/${oldName}.xcworkspace ${iosDir}/${newName}.xcworkspace`, { stdio: "inherit" });
+
+    for (const oldDir of possibleOldDirs) {
+        if (fs.existsSync(`${iosDir}/${oldDir}-Production`)) {
+            execSync(`mv "${iosDir}/${oldDir}-Production" "${iosDir}/${newName}-Production"`, { stdio: "inherit" });
+            break;
+        }
+    }
+
+    for (const oldDir of possibleOldDirs) {
+        if (fs.existsSync(`${iosDir}/${oldDir}.xcodeproj`)) {
+            execSync(`mv "${iosDir}/${oldDir}.xcodeproj" "${iosDir}/${newName}.xcodeproj"`, { stdio: "inherit" });
+            break;
+        }
+    }
+
+    for (const oldDir of possibleOldDirs) {
+        if (fs.existsSync(`${iosDir}/${oldDir}.xcworkspace`)) {
+            execSync(`mv "${iosDir}/${oldDir}.xcworkspace" "${iosDir}/${newName}.xcworkspace"`, { stdio: "inherit" });
+            break;
+        }
     }
 
     const pbxprojPath = path.join(iosDir, `${newName}.xcodeproj/project.pbxproj`);
     if (fs.existsSync(pbxprojPath)) {
         let content = fs.readFileSync(pbxprojPath, "utf8");
+        
+        for (const oldDir of possibleOldDirs) {
+            content = content.replace(new RegExp(oldDir, 'g'), newName);
+        }
         
         content = content.replace(
             /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+";/g,
@@ -54,6 +91,15 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
             /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.pro";/g,
             `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.pro";`
         );
+        
+        for (const oldDir of possibleOldDirs) {
+            content = content.replace(
+                new RegExp(`PRODUCT_NAME = ${oldDir};`, 'g'),
+                `PRODUCT_NAME = ${newName};`
+            );
+        }
+
+        content = content.replace(/ZustandRNQ/g, "");
 
         fs.writeFileSync(pbxprojPath, content);
         logSuccess("Updated project.pbxproj with all environment configurations");
@@ -74,6 +120,20 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
         const branchName = process.env.BRANCH_NAME;
         const isRN079OrHigher = branchName && (branchName.startsWith('rn-0.79') || branchName.startsWith('rn-0.8'));
         
+        for (const oldDir of possibleOldDirs) {
+            replaceInFile(
+                appDelegatePath,
+                new RegExp(oldDir, 'g'),
+                newName
+            );
+        }
+        
+        replaceInFile(
+            appDelegatePath,
+            /ZustandRNQ/g,
+            ""
+        );
+        
         if (isRN079OrHigher) {
             replaceInFile(
                 appDelegatePath,
@@ -93,27 +153,60 @@ function updateIOSProjectFiles(projectDir, oldName, newName) {
     const podfilePath = path.join(iosDir, "Podfile");
     if (fs.existsSync(podfilePath)) {
         logStep("Updating Podfile...");
-        replaceInFile(podfilePath, new RegExp(`project '${oldName}'`, 'g'), `project '${newName}'`);
-        replaceInFile(podfilePath, new RegExp(`target '${oldName}'`, 'g'), `target '${newName}'`);
-        replaceInFile(podfilePath, new RegExp(`target '${oldName}-Staging'`, 'g'), `target '${newName}-Staging'`);
-        replaceInFile(podfilePath, new RegExp(`target '${oldName}-Production'`, 'g'), `target '${newName}-Production'`);
-        replaceInFile(podfilePath, new RegExp(`if target\\.name == '${oldName}'`, 'g'), `if target.name == '${newName}'`);
+        
+        let content = fs.readFileSync(podfilePath, "utf8");
+        
+        for (const oldDir of possibleOldDirs) {
+            content = content.replace(new RegExp(`project '${oldDir}'`, 'g'), `project '${newName}'`);
+            content = content.replace(new RegExp(`target '${oldDir}'`, 'g'), `target '${newName}'`);
+            content = content.replace(new RegExp(`target '${oldDir}-Staging'`, 'g'), `target '${newName}-Staging'`);
+            content = content.replace(new RegExp(`target '${oldDir}-Production'`, 'g'), `target '${newName}-Production'`);
+            content = content.replace(new RegExp(`if target\\.name == '${oldDir}'`, 'g'), `if target.name == '${newName}'`);
+        }
+        
+        content = content.replace(/ZustandRNQ/g, "");
+        
+        fs.writeFileSync(podfilePath, content);
         logSuccess("Podfile updated successfully");
     }
 
-    updateIOSSchemes(projectDir, oldName, newName);
+    updateIOSSchemes(projectDir, originalOldName, newName);
 
     const podsDir = path.join(iosDir, "Pods");
     if (fs.existsSync(podsDir)) {
-        const fileExtensions = [".xcscheme", ".xcconfig", ".xcworkspacedata", ".pbxproj", ".plist"];
-        for (const ext of fileExtensions) {
-            const files = fs.readdirSync(podsDir).filter(file => file.endsWith(ext));
-            for (const file of files) {
-                const filePath = path.join(podsDir, file);
-                replaceInFile(filePath, new RegExp(oldName, "g"), newName);
-            }
+        try {
+            const fileExtensions = [".xcscheme", ".xcconfig", ".xcworkspacedata", ".pbxproj", ".plist"];
+            const findPodFiles = (dir) => {
+                const entries = fs.readdirSync(dir, { withFileTypes: true });
+                for (const entry of entries) {
+                    const fullPath = path.join(dir, entry.name);
+                    if (entry.isDirectory()) {
+                        findPodFiles(fullPath);
+                    } else if (fileExtensions.some(ext => entry.name.endsWith(ext))) {
+                        try {
+                            let content = fs.readFileSync(fullPath, "utf8");
+                            let modified = content;
+                            
+                            for (const oldDir of possibleOldDirs) {
+                                modified = modified.replace(new RegExp(oldDir, 'g'), newName);
+                            }
+                            
+                            modified = modified.replace(/ZustandRNQ/g, "");
+                            
+                            if (content !== modified) {
+                                fs.writeFileSync(fullPath, modified);
+                            }
+                        } catch (error) {
+                        }
+                    }
+                }
+            };
+            
+            findPodFiles(podsDir);
+            logSuccess("Updated Pods directory");
+        } catch (error) {
+            logError(`Error updating Pods directory: ${error.message}`);
         }
-        logSuccess("Updated Pods directory");
     }
 
     logSuccess("All iOS files updated successfully");

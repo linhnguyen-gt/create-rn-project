@@ -6,6 +6,12 @@ const { updateAndroidFiles } = require("../android/androidManager");
 const { updateIOSProjectFiles } = require("../ios/iosManager");
 const { findAndReplaceInDirectory } = require("../utils/fileUtils");
 
+// Package IDs mapped by architecture
+const TEMPLATE_PACKAGE_IDS = {
+    redux: "com.newreactnative",
+    zustand: "com.newreactnativezustandrnq"
+};
+
 function setupNewProject(projectDir, projectName, oldName, bundleId, architecture) {
     logStep("Setting up new project...");
 
@@ -20,10 +26,8 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
                 packageJson.name = projectName;
                 
                 if (packageJson.scripts) {
-                    let oldAppId = "com.newreactnative";
-                    if (architecture === "zustand") {
-                        oldAppId = "com.newreactnativezustandrnq";
-                    }
+                    // Use the same package ID mapping for consistency
+                    const oldAppId = TEMPLATE_PACKAGE_IDS[architecture] || TEMPLATE_PACKAGE_IDS.redux;
                     
                     if (packageJson.scripts.android) {
                         packageJson.scripts.android = packageJson.scripts.android
@@ -80,11 +84,14 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
         const baseAndroidId = bundleId || baseAppId;
         const baseIosId = bundleId || projectName.toLowerCase();
 
+        // Get the old package ID based on the architecture
+        const oldPackageId = TEMPLATE_PACKAGE_IDS[architecture] || TEMPLATE_PACKAGE_IDS.redux;
+
         logStep("Updating Android configuration...");
-        updateAndroidFiles(projectDir, "com.newreactnative", baseAndroidId, projectName, architecture);
+        updateAndroidFiles(projectDir, oldPackageId, baseAndroidId, projectName, architecture);
 
         logStep("Updating iOS configuration...");
-        updateIOSProjectFiles(projectDir, oldName, projectName, baseIosId);
+        updateIOSProjectFiles(projectDir, oldName, projectName, baseIosId, architecture);
 
         updateReadmeFile(projectDir, projectName);
 

@@ -4,6 +4,11 @@ const { execSync } = require("child_process");
 const { replaceInFile } = require("../utils/fileUtils");
 const { logSuccess, logWarning, logInfo, logStep, logError } = require("../utils/logUtils");
 
+const TEMPLATE_SOURCES = {
+    redux: "newreactnative",
+    zustand: "newreactnativezustandrnq"
+};
+
 function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName, architecture) {
     logStep("Updating Android files...");
 
@@ -17,10 +22,7 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
 
     const androidSrcDir = path.join(projectDir, "android/app/src/main/java/com");
     
-    let sourceDir = "newreactnative";
-    if (architecture === "zustand") {
-        sourceDir = "newreactnativezustandrnq";
-    }
+    const sourceDir = TEMPLATE_SOURCES[architecture] || TEMPLATE_SOURCES.redux;
     
     const oldPath = path.join(androidSrcDir, sourceDir);
     
@@ -51,8 +53,6 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
                 );
                 
                 replaceInFile(destFile, new RegExp(oldPackageId, "g"), newPackageId);
-                
-                replaceInFile(destFile, /zustandrnq/gi, "");
 
                 const baseFileName = path.basename(file, path.extname(file));
                 if (baseFileName === "MainActivity") {
@@ -79,7 +79,20 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
                     );
                 }
                 
-                content = content.replace(/zustandrnq/gi, "");
+                content = content.replace(
+                    /namespace\s+["'][^"']*zustandrnq[^"']*["']/gi,
+                    `namespace "com.${projectName.toLowerCase()}"`
+                );
+                
+                content = content.replace(
+                    /namespace\s+["'][^"']*["']/gi,
+                    `namespace "com.${projectName.toLowerCase()}"`
+                );
+
+                content = content.replace(
+                    /applicationId\s+["'][^"']*["']/gi,
+                    `applicationId "com.${projectName.toLowerCase()}"`
+                );
                 
                 const baseAppId = `com.${projectName.toLowerCase()}`;
                 const lines = content.split('\n');
@@ -124,10 +137,10 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
                                 `resValue 'string', 'build_config_package', '${baseAppId}'`);
                         } else if (inStagingFlavor) {
                             lines[i] = lines[i].replace(/resValue ['"]string['"],\s*['"]build_config_package['"],\s*['"][^'"]+['"]/g, 
-                                `resValue 'string', 'build_config_package', '${baseAppId}.stg'`);
+                                `resValue 'string', 'build_config_package', '${baseAppId}'`);
                         } else if (inProductionFlavor) {
                             lines[i] = lines[i].replace(/resValue ['"]string['"],\s*['"]build_config_package['"],\s*['"][^'"]+['"]/g, 
-                                `resValue 'string', 'build_config_package', '${baseAppId}.prod'`);
+                                `resValue 'string', 'build_config_package', '${baseAppId}'`);
                         }
                     }
                 }
@@ -173,8 +186,6 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
             if (fs.existsSync(manifestPath)) {
                 let content = fs.readFileSync(manifestPath, "utf8");
                 
-                content = content.replace(/zustandrnq/gi, "");
-                
                 content = content.replace(
                     /package="[^"]+"/g,
                     `package="com.${projectName.toLowerCase()}"`
@@ -197,9 +208,6 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
             const settingsPath = path.join(projectDir, "android/settings.gradle");
             if (fs.existsSync(settingsPath)) {
                 let content = fs.readFileSync(settingsPath, "utf8");
-                
-                content = content.replace(/zustandrnq/gi, "");
-                
                 fs.writeFileSync(settingsPath, content);
                 logSuccess("Updated settings.gradle");
             }
