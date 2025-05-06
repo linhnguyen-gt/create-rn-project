@@ -6,7 +6,6 @@ const { updateAndroidFiles } = require("../android/androidManager");
 const { updateIOSProjectFiles } = require("../ios/iosManager");
 const { findAndReplaceInDirectory } = require("../utils/fileUtils");
 
-// Package IDs mapped by architecture
 const TEMPLATE_PACKAGE_IDS = {
     redux: "com.newreactnative",
     zustand: "com.newreactnativezustandrnq"
@@ -26,7 +25,6 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
                 packageJson.name = projectName;
                 
                 if (packageJson.scripts) {
-                    // Use the same package ID mapping for consistency
                     const oldAppId = TEMPLATE_PACKAGE_IDS[architecture] || TEMPLATE_PACKAGE_IDS.redux;
                     
                     if (packageJson.scripts.android) {
@@ -84,7 +82,6 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
         const baseAndroidId = bundleId || baseAppId;
         const baseIosId = bundleId || projectName.toLowerCase();
 
-        // Get the old package ID based on the architecture
         const oldPackageId = TEMPLATE_PACKAGE_IDS[architecture] || TEMPLATE_PACKAGE_IDS.redux;
 
         logStep("Updating Android configuration...");
@@ -93,7 +90,7 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
         logStep("Updating iOS configuration...");
         updateIOSProjectFiles(projectDir, oldName, projectName, baseIosId, architecture);
 
-        updateReadmeFile(projectDir, projectName);
+        updateReadmeFile(projectDir, projectName, architecture);
 
         logSuccess("Project setup completed successfully");
         return true;
@@ -103,19 +100,73 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
     }
 }
 
-function updateReadmeFile(projectDir, projectName) {
+function updateReadmeFile(projectDir, projectName, architecture) {
     logStep("Updating README.md...");
     const readmePath = path.join(projectDir, "README.md");
     
     if (fs.existsSync(readmePath)) {
         try {
             let content = fs.readFileSync(readmePath, "utf8");
-
-            content = content.replace(
-                /<h1>🚀 New React Native Project<\/h1>/,
-                `<h1>🚀 ${projectName} Project</h1>`
-            );
-
+            
+            const patterns = {
+                zustand: [
+                    {
+                        find: /<h1>🚀 React Native Modern Architecture<\/h1>/,
+                        replace: `<h1>🚀 ${projectName}</h1>`
+                    },
+                    {
+                        find: /<p>A modern React Native boilerplate with Zustand, React Query and best practices<\/p>/,
+                        replace: `<p>A modern React Native project built with Zustand and React Query</p>`
+                    },
+                    {
+                        find: /<p><strong>Create a new project using our CLI:.*?<\/p>/,
+                        replace: ``
+                    },
+                    {
+                        find: /# 🚀 React Native Modern Architecture/,
+                        replace: `# 🚀 ${projectName}`
+                    },
+                    {
+                        find: /### Clone the repository\\\*\\*\s*```bash\s*git clone https:\/\/github\.com\/linhnguyen-gt\/new-react-native-zustand-react-query\s*cd new-react-native-zustand-react-query\s*```/g,
+                        replace: ``
+                    },
+                    {
+                        find: /project\s+'NewReactNativeZustandRNQ'/g,
+                        replace: `project '${projectName}'`
+                    }
+                ],
+                redux: [
+                    {
+                        find: /<h1>🚀 New React Native Project<\/h1>/,
+                        replace: `<h1>🚀 ${projectName} Project</h1>`
+                    },
+                    {
+                        find: /### Clone the repository\\\*\\*\s*```bash\s*git clone https:\/\/github\.com\/linhnguyen-gt\/new-react-native\s*cd new-react-native\s*```/g,
+                        replace: ``
+                    },
+                    {
+                        find: /project\s+'NewReactNative'/g,
+                        replace: `project '${projectName}'`
+                    }
+                ]
+            };
+            
+            const commonPatterns = [
+                {
+                    find: /### Clone the repository.*?git clone https:\/\/github\.com\/linhnguyen-gt\/[^\n]*\s*cd [^\n]*\s*```/gs,
+                    replace: ``
+                }
+            ];
+            
+            const replacements = patterns[architecture] || patterns.redux;
+            replacements.forEach(({ find, replace }) => {
+                content = content.replace(find, replace);
+            });
+            
+            commonPatterns.forEach(({ find, replace }) => {
+                content = content.replace(find, replace);
+            });
+            
             if (!content.includes("Created with [Linh Nguyen]")) {
                 content += `\n\n## Created with [Linh Nguyen](https://github.com/linhnguyen-gt).\n`;
             }
@@ -139,7 +190,8 @@ function cleanupProject(projectDir) {
         "yarn-debug.log",
         "yarn-error.log",
         ".env.vault",
-        "create-rn-with-redux-project"
+        "create-rn-with-redux-project",
+        "package-lock.json",
     ];
 
     for (const item of tempDirsToRemove) {

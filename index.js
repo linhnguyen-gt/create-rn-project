@@ -16,13 +16,29 @@ const ARCHITECTURES = {
     name: "Redux + Redux Saga",
     repo: "https://github.com/linhnguyen-gt/new-react-native.git",
     description: "State management with Redux and Redux Saga",
-    originalName: "NewReactNative"
+    originalName: "NewReactNative",
+    documentation: [
+      { name: "Redux Toolkit", url: "https://redux-toolkit.js.org/introduction/getting-started" },
+      { name: "Redux Saga", url: "https://redux-saga.js.org/docs/introduction/GettingStarted" }
+    ],
+    community: [
+      { name: "Redux community", url: "https://stackoverflow.com/questions/tagged/redux" },
+      { name: "Redux Saga community", url: "https://github.com/redux-saga/redux-saga/discussions" }
+    ]
   },
   zustand: {
     name: "Zustand + React Query",
     repo: "https://github.com/linhnguyen-gt/new-react-native-zustand-react-query.git",
     description: "State management with Zustand and data fetching with React Query",
-    originalName: "NewReactNativeZustandRN"
+    originalName: "NewReactNativeZustandRN",
+    documentation: [
+      { name: "Zustand", url: "https://github.com/pmndrs/zustand" },
+      { name: "React Query", url: "https://tanstack.com/query/latest/docs/react/overview" }
+    ],
+    community: [
+      { name: "Zustand community", url: "https://github.com/pmndrs/zustand/discussions" },
+      { name: "React Query community", url: "https://github.com/TanStack/query/discussions" }
+    ]
   }
 };
 
@@ -189,12 +205,9 @@ let chalk;
                 logInfo("\n📚 Documentation:");
                 console.log("- React Native: https://reactnative.dev/docs/getting-started");
                 
-                if (architecture === 'redux') {
-                    console.log("- Redux Toolkit: https://redux-toolkit.js.org/introduction/getting-started");
-                } else if (architecture === 'zustand') {
-                    console.log("- Zustand: https://github.com/pmndrs/zustand");
-                    console.log("- React Query: https://tanstack.com/query/latest/docs/react/overview");
-                }
+                selectedArch.documentation.forEach(doc => {
+                    console.log(`- ${doc.name}: ${doc.url}`);
+                });
                 
                 console.log("- React Navigation: https://reactnavigation.org/docs/getting-started");
                 console.log("- Expo: https://docs.expo.dev/get-started/installation/");
@@ -203,7 +216,14 @@ let chalk;
                 logInfo("\n🐞 Troubleshooting:");
                 console.log("- If you encounter issues with iOS, try: cd ios && pod install");
                 console.log("- For Android issues, check your Android SDK setup and try: cd android && ./gradlew clean");
-                console.log("- For more help, visit: https://github.com/linhnguyen-gt/new-react-native/issues");
+                
+                const repoUrl = ARCHITECTURES[architecture]?.repo || "https://github.com/linhnguyen-gt/new-react-native";
+                const issuesUrl = repoUrl.replace(/\.git$/, '') + "/issues";
+                console.log(`- For more help, visit: ${issuesUrl}`);
+                
+                selectedArch.community.forEach(community => {
+                    console.log(`- ${community.name}: ${community.url}`);
+                });
 
             } catch (error) {
                 logError("\n❌ Error creating project:", error);

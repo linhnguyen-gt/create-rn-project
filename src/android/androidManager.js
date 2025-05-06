@@ -154,33 +154,6 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
                 logInfo(`Application ID (production): ${baseAppId}.prod`);
             }
 
-            const projectBuildGradlePath = path.join(projectDir, "android/build.gradle");
-            if (fs.existsSync(projectBuildGradlePath)) {
-                let content = fs.readFileSync(projectBuildGradlePath, "utf8");
-                
-                if (!content.includes("kotlin_version")) {
-                    const kotlinVersionDefinition = 
-                        'ext {\n' +
-                        '        kotlin_version = "1.8.10"\n' +
-                        '    }';
-                    
-                    content = content.replace(
-                        /buildscript\s*{/,
-                        'buildscript {\n    ' + kotlinVersionDefinition
-                    );
-                }
-                
-                if (!content.includes("kotlin-gradle-plugin")) {
-                    content = content.replace(
-                        /dependencies\s*{/,
-                        'dependencies {\n        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"'
-                    );
-                }
-                
-                fs.writeFileSync(projectBuildGradlePath, content);
-                logSuccess("Updated project build.gradle with Kotlin support");
-            }
-
             const manifestPath = path.join(projectDir, "android/app/src/main/AndroidManifest.xml");
             if (fs.existsSync(manifestPath)) {
                 let content = fs.readFileSync(manifestPath, "utf8");
