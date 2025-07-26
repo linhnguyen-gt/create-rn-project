@@ -37,8 +37,8 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
                             .replace(new RegExp(`${oldAppId}\\.stg`, 'g'), `${baseAppId}.stg`);
                     }
                     
-                    if (packageJson.scripts["android:pro"]) {
-                        packageJson.scripts["android:pro"] = packageJson.scripts["android:pro"]
+                    if (packageJson.scripts["android:prod"]) {
+                        packageJson.scripts["android:prod"] = packageJson.scripts["android:prod"]
                             .replace(new RegExp(`${oldAppId}\\.production`, 'g'), `${baseAppId}.prod`);
                     }
                 }
@@ -185,6 +185,7 @@ function cleanupProject(projectDir) {
     const tempDirsToRemove = [
         ".expo-shared",
         ".expo",
+        ".serena",
         "expo-debug.log",
         "npm-debug.log",
         "yarn-debug.log",
