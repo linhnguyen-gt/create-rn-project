@@ -133,6 +133,34 @@ function updateReadmeFile(projectDir, projectName, architecture) {
                     {
                         find: /project\s+'NewReactNativeZustandRNQ'/g,
                         replace: `project '${projectName}'`
+                    },
+                    {
+                        find: /applicationId 'com\.newreactnativezustandrnq'/g,
+                        replace: `applicationId 'com.${projectName.toLowerCase()}'`
+                    },
+                    {
+                        find: /resValue 'string', 'build_config_package', 'com\.newreactnativezustandrnq'/g,
+                        replace: `resValue 'string', 'build_config_package', 'com.${projectName.toLowerCase()}'`
+                    },
+                    {
+                        find: /applicationId 'com\.newreactnativezustandrnq\.stg'/g,
+                        replace: `applicationId 'com.${projectName.toLowerCase()}.stg'`
+                    },
+                    {
+                        find: /applicationId 'com\.newreactnativezustandrnq\.production'/g,
+                        replace: `applicationId 'com.${projectName.toLowerCase()}.production'`
+                    },
+                    {
+                        find: /--app-id com\.newreactnativezustandrnq/g,
+                        replace: `--app-id com.${projectName.toLowerCase()}`
+                    },
+                    {
+                        find: /--app-id com\.newreactnativezustandrnq\.stg/g,
+                        replace: `--app-id com.${projectName.toLowerCase()}.stg`
+                    },
+                    {
+                        find: /--app-id com\.newreactnativezustandrnq\.production/g,
+                        replace: `--app-id com.${projectName.toLowerCase()}.production`
                     }
                 ],
                 redux: [
@@ -147,6 +175,36 @@ function updateReadmeFile(projectDir, projectName, architecture) {
                     {
                         find: /project\s+'NewReactNative'/g,
                         replace: `project '${projectName}'`
+                    },
+                    // Replace old package names in Android Configuration for Redux template
+                    {
+                        find: /applicationId 'com\.newreactnative'/g,
+                        replace: `applicationId 'com.${projectName.toLowerCase()}'`
+                    },
+                    {
+                        find: /resValue 'string', 'build_config_package', 'com\.newreactnative'/g,
+                        replace: `resValue 'string', 'build_config_package', 'com.${projectName.toLowerCase()}'`
+                    },
+                    {
+                        find: /applicationId 'com\.newreactnative\.stg'/g,
+                        replace: `applicationId 'com.${projectName.toLowerCase()}.stg'`
+                    },
+                    {
+                        find: /applicationId 'com\.newreactnative\.production'/g,
+                        replace: `applicationId 'com.${projectName.toLowerCase()}.production'`
+                    },
+                    // Replace old package names in package.json scripts for Redux template
+                    {
+                        find: /--app-id com\.newreactnative/g,
+                        replace: `--app-id com.${projectName.toLowerCase()}`
+                    },
+                    {
+                        find: /--app-id com\.newreactnative\.stg/g,
+                        replace: `--app-id com.${projectName.toLowerCase()}.stg`
+                    },
+                    {
+                        find: /--app-id com\.newreactnative\.production/g,
+                        replace: `--app-id com.${projectName.toLowerCase()}.production`
                     }
                 ]
             };
