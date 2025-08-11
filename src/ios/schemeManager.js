@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { logSuccess, logWarning, logInfo, logStep } = require("../utils/logUtils");
+const { logSuccess, logStep } = require("../utils/logUtils");
 
 function updateIOSSchemes(projectDir, oldName, newName) {
     logStep("Updating iOS schemes...");

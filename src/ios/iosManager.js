@@ -78,8 +78,8 @@ function updateIOSProjectFiles(projectDir, oldName, newName, newPackageId, archi
         }
         
         content = content.replace(
-            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+";/g,
-            `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}";`
+            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.dev";/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.dev";`
         );
 
         content = content.replace(
@@ -88,8 +88,8 @@ function updateIOSProjectFiles(projectDir, oldName, newName, newPackageId, archi
         );
 
         content = content.replace(
-            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.pro";/g,
-            `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.pro";`
+            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.prod";/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.prod";`
         );
         
         for (const oldDir of possibleOldDirs) {
