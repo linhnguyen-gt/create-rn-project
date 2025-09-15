@@ -60,6 +60,12 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
                 if (appJson.displayName) {
                     appJson.displayName = projectName;
                 }
+                if(appJson.ios) {
+                   appJson.ios.bundleIdentifier = 'com.' + projectName.toLowerCase();
+                }
+                if(appJson.android) {
+                    appJson.android.package = 'com.' + projectName.toLowerCase();
+                }
                 
                 fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2));
                 logSuccess("Updated app.json");

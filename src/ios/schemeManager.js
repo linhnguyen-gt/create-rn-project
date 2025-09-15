@@ -51,7 +51,7 @@ function createNewIOSScheme(projectDir, projectName) {
 function generateSchemeContent(projectName) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1210"
+   LastUpgradeVersion = "1130"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"

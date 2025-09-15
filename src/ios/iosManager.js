@@ -69,6 +69,130 @@ function updateIOSProjectFiles(projectDir, oldName, newName, newPackageId, archi
         }
     }
 
+    let bridgingHeaderRenamed = false;
+    for (const oldDir of possibleOldDirs) {
+        const bridgingHeaderPath = `${iosDir}/${oldDir}-Bridging-Header.h`;
+        if (fs.existsSync(bridgingHeaderPath)) {
+            const newBridgingHeaderPath = `${iosDir}/${newName}-Bridging-Header.h`;
+            execSync(`mv "${bridgingHeaderPath}" "${newBridgingHeaderPath}"`, { stdio: "inherit" });
+            logSuccess(`Renamed Bridging Header: ${oldDir}-Bridging-Header.h -> ${newName}-Bridging-Header.h`);
+            bridgingHeaderRenamed = true;
+            break;
+        }
+    }
+    if (!bridgingHeaderRenamed) {
+        const findFiles = (dir) => {
+            const results = [];
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (fullPath.includes('node_modules') || fullPath.includes('.git')) continue;
+                if (entry.isDirectory()) {
+                    results.push(...findFiles(fullPath));
+                } else {
+                    results.push(fullPath);
+                }
+            }
+            return results;
+        };
+        for (const oldDir of possibleOldDirs) {
+            const candidates = findFiles(iosDir).filter(p => p.endsWith(`${oldDir}-Bridging-Header.h`));
+            if (candidates.length > 0) {
+                const fromPath = candidates[0];
+                const targetDir = path.dirname(fromPath);
+                const toPath = path.join(targetDir, `${newName}-Bridging-Header.h`);
+                execSync(`mv "${fromPath}" "${toPath}"`, { stdio: "inherit" });
+                logSuccess(`Renamed Bridging Header in-place: ${path.basename(fromPath)} -> ${path.basename(toPath)}`);
+                bridgingHeaderRenamed = true;
+                break;
+            }
+        }
+    }
+
+    let entitlementsRenamed = false;
+    for (const oldDir of possibleOldDirs) {
+        const entitlementsPath = `${iosDir}/${oldDir}.entitlements`;
+        if (fs.existsSync(entitlementsPath)) {
+            const newEntitlementsPath = `${iosDir}/${newName}.entitlements`;
+            execSync(`mv "${entitlementsPath}" "${newEntitlementsPath}"`, { stdio: "inherit" });
+            logSuccess(`Renamed entitlements: ${oldDir}.entitlements -> ${newName}.entitlements`);
+            entitlementsRenamed = true;
+            break;
+        }
+    }
+    if (!entitlementsRenamed) {
+        const findFiles = (dir) => {
+            const results = [];
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (fullPath.includes('node_modules') || fullPath.includes('.git')) continue;
+                if (entry.isDirectory()) {
+                    results.push(...findFiles(fullPath));
+                } else {
+                    results.push(fullPath);
+                }
+            }
+            return results;
+        };
+        for (const oldDir of possibleOldDirs) {
+            const candidates = findFiles(iosDir).filter(p => p.endsWith(`${oldDir}.entitlements`));
+            if (candidates.length > 0) {
+                const fromPath = candidates[0];
+                const targetDir = path.dirname(fromPath);
+                const toPath = path.join(targetDir, `${newName}.entitlements`);
+                execSync(`mv "${fromPath}" "${toPath}"`, { stdio: "inherit" });
+                logSuccess(`Renamed entitlements in-place: ${path.basename(fromPath)} -> ${path.basename(toPath)}`);
+                entitlementsRenamed = true;
+                break;
+            }
+        }
+    }
+
+    const bridgingHeaderPath = path.join(iosDir, `${newName}-Bridging-Header.h`);
+    if (fs.existsSync(bridgingHeaderPath)) {
+        try {
+            let content = fs.readFileSync(bridgingHeaderPath, "utf8");
+            let modified = false;
+            
+            for (const oldDir of possibleOldDirs) {
+                if (content.includes(oldDir)) {
+                    content = content.replace(new RegExp(oldDir, 'g'), newName);
+                    modified = true;
+                }
+            }
+            
+            if (modified) {
+                fs.writeFileSync(bridgingHeaderPath, content);
+                logSuccess("Updated Bridging Header file content");
+            }
+        } catch (error) {
+            logError(`Error updating Bridging Header file: ${error.message}`);
+        }
+    }
+
+    const entitlementsPath = path.join(iosDir, `${newName}.entitlements`);
+    if (fs.existsSync(entitlementsPath)) {
+        try {
+            let content = fs.readFileSync(entitlementsPath, "utf8");
+            let modified = false;
+            
+            for (const oldDir of possibleOldDirs) {
+                if (content.includes(oldDir)) {
+                    content = content.replace(new RegExp(oldDir, 'g'), newName);
+                    modified = true;
+                }
+            }
+            
+            if (modified) {
+                fs.writeFileSync(entitlementsPath, content);
+                logSuccess("Updated entitlements file content");
+            }
+        } catch (error) {
+            logError(`Error updating entitlements file: ${error.message}`);
+        }
+    }
+
     const pbxprojPath = path.join(iosDir, `${newName}.xcodeproj/project.pbxproj`);
     if (fs.existsSync(pbxprojPath)) {
         let content = fs.readFileSync(pbxprojPath, "utf8");
@@ -77,19 +201,46 @@ function updateIOSProjectFiles(projectDir, oldName, newName, newPackageId, archi
             content = content.replace(new RegExp(oldDir, 'g'), newName);
         }
         
+        
         content = content.replace(
-            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.dev";/g,
-            `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.dev";`
+            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]*\.dev";/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = "com.${newName.toLowerCase()}.dev";`
         );
-
         content = content.replace(
-            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.stg";/g,
-            `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.stg";`
+            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]*\.stg";/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = "com.${newName.toLowerCase()}.stg";`
         );
-
         content = content.replace(
-            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]+\.prod";/g,
-            `PRODUCT_BUNDLE_IDENTIFIER = "${newName.toLowerCase()}.prod";`
+            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]*\.prod";/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = "com.${newName.toLowerCase()}.prod";`
+        );
+        content = content.replace(
+            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]*\.production";/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = "com.${newName.toLowerCase()}.prod";`
+        );
+        content = content.replace(
+            /PRODUCT_BUNDLE_IDENTIFIER = "org\.reactjs\.native\.example\.[^"]*";/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = "com.${newName.toLowerCase()}";`
+        );
+        content = content.replace(
+            /PRODUCT_BUNDLE_IDENTIFIER = org\.reactjs\.native\.example\.[^;\s]*\.dev;/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = com.${newName.toLowerCase()}.dev;`
+        );
+        content = content.replace(
+            /PRODUCT_BUNDLE_IDENTIFIER = org\.reactjs\.native\.example\.[^;\s]*\.stg;/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = com.${newName.toLowerCase()}.stg;`
+        );
+        content = content.replace(
+            /PRODUCT_BUNDLE_IDENTIFIER = org\.reactjs\.native\.example\.[^;\s]*\.prod;/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = com.${newName.toLowerCase()}.prod;`
+        );
+        content = content.replace(
+            /PRODUCT_BUNDLE_IDENTIFIER = org\.reactjs\.native\.example\.[^;\s]*\.production;/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = com.${newName.toLowerCase()}.prod;`
+        );
+        content = content.replace(
+            /PRODUCT_BUNDLE_IDENTIFIER = org\.reactjs\.native\.example\.[^;\s]*;/g,
+            `PRODUCT_BUNDLE_IDENTIFIER = com.${newName.toLowerCase()};`
         );
         
         for (const oldDir of possibleOldDirs) {
@@ -110,7 +261,7 @@ function updateIOSProjectFiles(projectDir, oldName, newName, newPackageId, archi
         replaceInFile(
             infoPlistPath,
             /<string>org\.reactjs\.native\.example\.[^<]+<\/string>/g,
-            `<string>${newName.toLowerCase()}</string>`
+            `<string>com.${newName.toLowerCase()}</string>`
         );
         logSuccess("Updated Info.plist");
     }

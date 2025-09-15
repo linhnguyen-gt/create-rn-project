@@ -167,16 +167,6 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
                 logSuccess("Updated AndroidManifest.xml");
             }
 
-            const stringsPath = path.join(projectDir, "android/app/src/main/res/values/strings.xml");
-            if (fs.existsSync(stringsPath)) {
-                replaceInFile(
-                    stringsPath,
-                    /<string name="app_name">[^<]+<\/string>/,
-                    `<string name="app_name">${projectName}</string>`
-                );
-                logSuccess("Updated strings.xml");
-            }
-
             const settingsPath = path.join(projectDir, "android/settings.gradle");
             if (fs.existsSync(settingsPath)) {
                 let content = fs.readFileSync(settingsPath, "utf8");
