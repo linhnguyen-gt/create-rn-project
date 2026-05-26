@@ -1,176 +1,220 @@
-<div align="center">
-  <h1>🚀 create-rn-project</h1>
-  <p>A powerful CLI tool to create React Native projects with multiple architecture options. Quickly scaffold production-ready apps with Redux or Zustand, TypeScript, multi-environment support, and NativeWind styling.</p>
-</div>
+# create-rn-project
 
-<p align="center">
-  <img src="https://img.shields.io/badge/TypeScript-Integrated-blue?style=for-the-badge&logo=typescript&logoColor=white" alt="typescript" />
-  <img src="https://img.shields.io/badge/Multiple_Architectures-Available-28A745?style=for-the-badge" alt="architectures" />
-</p>
+CLI for scaffolding React Native projects from Linh Nguyen's boilerplate templates.
 
-## 📋 Overview
+## Overview
 
-`create-rn-project` is a command-line tool that helps you quickly set up a new React Native project with a production-ready structure and configuration. It supports multiple architecture options:
+`create-rn-project` clones a selected template, renames native identifiers, updates bundle/package IDs, installs dependencies with the template package manager, and optionally initializes Git.
 
-### Available Architectures
+Available templates:
 
-- **Redux + Redux Saga** - Based on [new-react-native](https://github.com/linhnguyen-gt/new-react-native) template
-- **Zustand + React Query** - Based on [new-react-native-zustand-react-query](https://github.com/linhnguyen-gt/new-react-native-zustand-react-query) template
+- `redux`: Redux + Redux Saga, based on [new-react-native](https://github.com/linhnguyen-gt/new-react-native)
+- `zustand`: Zustand + TanStack React Query, based on [new-react-native-zustand-react-query](https://github.com/linhnguyen-gt/new-react-native-zustand-react-query)
 
-Each architecture includes:
+The Zustand template is an Expo prebuild project, not a pure managed Expo app. Its native iOS and Android projects are generated and extended through config plugins for environment support.
 
-- TypeScript for type safety
-- NativeWind for styling with Tailwind CSS
-- Multi-environment support (Development, Staging, Production)
-- Pre-configured folder structure
-- Gluestack UI components
-- And much more!
+## Requirements
 
-## 🚀 Installation
+- Node.js. Use the version required by the selected template. The current Zustand template expects Node.js `>=22.11.0`.
+- Git.
+- React Native iOS/Android development environment.
+- Corepack enabled when using templates that declare `pnpm`.
 
-### Global Installation
+Enable Corepack if needed:
 
 ```bash
-# Install globally from the official repository
+corepack enable
+```
+
+## Installation
+
+```bash
 npm install -g https://github.com/linhnguyen-gt/create-rn-project.git
 ```
 
-### Requirements
+## Usage
 
-Make sure you have the following installed:
-
-- Node.js (v20+ or newer)
-- npm or yarn
-- Git
-- React Native development environment set up (for running the generated project)
-
-## 📱 Usage
-
-### Creating a New Project
+Interactive architecture selection:
 
 ```bash
-# Basic usage with interactive architecture selection
 create-rn-project MyApp
-
-# You'll see a menu like:
-# ? Choose an architecture: (Use arrow keys)
-# ❯ Redux + Redux Saga - State management with Redux and Redux Saga
-#   Zustand + React Query - State management with Zustand and data fetching with React Query
 ```
 
-You can also specify the architecture directly using the `-a` or `--arch` flag:
+Select an architecture directly:
 
 ```bash
-# Directly specify Zustand + React Query architecture
 create-rn-project MyApp -a zustand
-
-# Directly specify Redux + Redux Saga architecture
 create-rn-project MyApp -a redux
 ```
 
-Additional options:
+Templates are always cloned from the latest `main` branch. Version or branch selection with `MyApp@branch` is not supported.
 
 ```bash
-# With specific React Native version branch
-create-rn-project MyApp@rn-0.79.xx
+create-rn-project MyApp -a zustand
+```
 
-# With custom bundle ID
+Use a custom base bundle/package ID:
+
+```bash
+create-rn-project MyApp -a zustand -b com.example.myapp
+```
+
+With a custom Git remote and no automatic install:
+
+```bash
+create-rn-project MyApp -a zustand -b com.example.myapp --repo https://github.com/your-org/my-app.git --skip-install
+```
+
+Important: pass the bundle identifier with `-b` or `--bundle-id`.
+
+```bash
+# Correct
 create-rn-project MyApp -b com.example.myapp
 
-# With all options
-create-rn-project MyApp@rn-0.79.xx -b com.example.myapp --repo https://github.com/yourusername/your-repo.git --skip-install --use-npm
+# Incorrect
+create-rn-project MyApp com.example.myapp
 ```
 
-❗ **Note**: To set a custom bundle identifier, you must use the `-b` or `--bundle-id` flag. For example:
-- ✅ Correct: `create-rn-project MyApp -b com.example.myapp`
-- ❌ Incorrect: `create-rn-project MyApp com.example.myapp`
+## Options
 
-### Available React Native Versions
+- `-a, --arch <architecture>`: Template architecture, either `redux` or `zustand`.
+- `-b, --bundle-id <id>`: Base bundle/package identifier. Defaults to `com.<project-name>`.
+- `-r, --repo <url>`: Git remote URL for the generated project.
+- `--skip-install`: Skip dependency installation.
+- `--use-npm`: Use npm instead of the template package manager. This is not allowed for the Zustand template.
+- `--skip-env-setup`: Skip the template environment setup script.
+- `--skip-git`: Skip Git initialization.
+- `--help`: Show CLI help.
 
-- `main` - Latest stable version (default)
-- `rn-0.78.xx` - React Native 0.78.x
-- `rn-0.79.xx` - React Native 0.79.x
+## Package Manager Behavior
 
-Examples:
+The CLI detects the package manager from the cloned template:
+
+- `packageManager` in `package.json`
+- lockfiles such as `pnpm-lock.yaml`, `yarn.lock`, or `package-lock.json`
+- fallback to `yarn` for older templates
+
+The current Zustand template uses `pnpm`, so generated next steps use `pnpm install`, `pnpm env:setup`, `pnpm ios`, and `pnpm android`.
+
+The Zustand template requires `pnpm`. If `pnpm` is missing, the CLI asks whether it should enable Corepack before continuing.
+
+Use `--use-npm` only when you intentionally want to override a template package manager that supports npm. The Redux template still uses Yarn by default.
+
+## Zustand Template Output
+
+For `-a zustand`, the generated project uses:
+
+- Expo SDK 56
+- React Native 0.85.3
+- TypeScript
+- Zustand
+- TanStack React Query
+- Gluestack UI
+- NativeWind
+- Expo Updates
+- Expo prebuild with config-plugin-generated native environments
+
+Environment source of truth:
+
+- `app.config.ts`
+- `plugins/with-environment-support.cjs`
+- `.env`
+- `.env.staging`
+- `.env.production`
+
+The generated native identifiers follow this pattern when the base ID is `com.example.myapp`:
+
+- Development: `com.example.myapp.dev`
+- Staging: `com.example.myapp.stg`
+- Production: `com.example.myapp`
+
+Generated native run scripts are backed by `scripts/run-native.cjs`; the CLI rewrites that runner with the generated project name and bundle/package IDs.
+
+## After Creating A Zustand Project
 
 ```bash
-# Use React Native 0.78.x
-create-rn-project MyApp@rn-0.78.xx
-
-# Use React Native 0.79.x
-create-rn-project MyApp@rn-0.79.xx
-
-# Use latest stable version
-create-rn-project MyApp
-```
-
-### Available Options
-
-- `-a, --arch <architecture>`: Choose architecture (redux, zustand)
-- `-b, --bundle-id <id>`: Set custom bundle identifier (default: "com.example.app")
-- `-r, --repo <url>`: Specify GitHub repository URL
-- `--skip-install`: Skip installing dependencies
-- `--use-npm`: Use npm instead of yarn for installing dependencies
-- `--skip-env-setup`: Skip environment setup
-- `--skip-git`: Skip git initialization
-- `--help`: Show help information
-
-### After Creating a Project
-
-Once your project is created, you can:
-
-```bash
-# Navigate to your project
 cd MyApp
-
-# Start the development server
-yarn start
-
-# Run on iOS
-yarn ios
-
-# Run on Android
-yarn android
-
-# Run on specific environments
-yarn ios:stg    # Staging environment for iOS
-yarn android:pro  # Production environment for Android
+pnpm install
+pnpm env:setup
 ```
 
-## ✨ Features
+Run development builds:
 
-The generated project comes with:
+```bash
+pnpm ios
+pnpm android
+```
 
-- 🏗️ **TypeScript Integration**: Full TypeScript support for type safety
-- 🔄 **State Management**: Choose between Redux Toolkit with Redux Saga or Zustand
-- 🔍 **Data Fetching**: React Query available in Zustand architecture
-- 🎨 **Styling**: NativeWind (Tailwind CSS for React Native)
-- 🌐 **Multi-Environment**: Development, Staging, and Production environments
-- 📱 **Cross-Platform**: iOS and Android support with environment-specific configurations
-- 🛠️ **Developer Tools**: Reactotron integration for debugging
-- 📦 **Organized Structure**: Pre-configured folder structure following best practices
-- 🔍 **Code Quality**: ESLint and Prettier pre-configured
+Run staging builds:
 
-## 🔧 Environment Configuration
+```bash
+pnpm ios:stg
+pnpm android:stg
+```
 
-The generated project supports multiple environments:
+Run production builds:
 
-- **Development**: Default environment for development
-- **Staging**: For testing before production
-- **Production**: For production releases
+```bash
+pnpm ios:prod
+pnpm android:prod
+```
 
-Each environment has its own configuration files and build scripts.
+Regenerate native folders:
 
-## 📄 License
+```bash
+pnpm prebuild:clean
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+One clean prebuild should regenerate all supported environments. Do not add separate prebuild scripts for each environment unless the template intentionally changes its native generation model.
 
-## 👨‍💻 Author
+## Native Environment Mapping
 
-**Linh Nguyen** - [GitHub](https://github.com/linhnguyen-gt)
+Zustand iOS schemes:
 
----
+- Development: project-name scheme, for example `MyApp`
+- Staging: `Staging`
+- Production: `Production`
 
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/linhnguyen-gt">Linh Nguyen</a>
-</p>
+Zustand Android variants:
+
+- Development: `developmentDebug`
+- Staging: `stagingDebug`
+- Production: `productionDebug`
+
+Android keeps a `development` flavor because Gradle requires every environment to be represented once a flavor dimension exists.
+
+## Redux Template Notes
+
+The Redux template is kept for compatibility with the existing `new-react-native` boilerplate. It may use different package-manager and native-environment conventions from the Zustand template. The CLI preserves those older conventions unless the selected template itself is updated.
+
+## Troubleshooting
+
+If dependency installation fails:
+
+```bash
+pnpm install
+pnpm store prune
+```
+
+For iOS native dependency issues:
+
+```bash
+cd ios
+pod install
+```
+
+For Android native build issues:
+
+```bash
+cd android
+./gradlew clean
+```
+
+For template-specific issues:
+
+- Zustand template: https://github.com/linhnguyen-gt/new-react-native-zustand-react-query/issues
+- Redux template: https://github.com/linhnguyen-gt/new-react-native/issues
+
+## License
+
+MIT

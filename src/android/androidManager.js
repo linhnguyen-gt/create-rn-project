@@ -8,24 +8,33 @@ const TEMPLATE_SOURCES = {
     zustand: "newreactnativezustandrnq"
 };
 
+function packageIdToPath(packageId) {
+    return packageId.split(".").join(path.sep);
+}
+
 function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName, architecture) {
     logStep("Updating Android files...");
 
     if (!/^[A-Z][a-z]*(?:[A-Z][a-z]*)*$/.test(projectName)) {
-        throw new Error(`Invalid Android project name "${projectName}". Name must be in PascalCase format (e.g., MyApp, MyReactApp).`);
+        throw new Error(
+            `Invalid Android project name "${projectName}". Name must be in PascalCase format (e.g., MyApp, MyReactApp).`
+        );
     }
 
     if (!/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$/.test(newPackageId)) {
-        throw new Error(`Invalid Android package ID "${newPackageId}". Package ID must follow Java package naming conventions (e.g., com.example.myapp).`);
+        throw new Error(
+            `Invalid Android package ID "${newPackageId}". Package ID must follow Java package naming conventions (e.g., com.example.myapp).`
+        );
     }
 
-    const androidSrcDir = path.join(projectDir, "android/app/src/main/java/com");
-    
+    const androidSrcRoot = path.join(projectDir, "android/app/src/main/java");
+    const androidSrcDir = path.join(androidSrcRoot, "com");
+
     const sourceDir = TEMPLATE_SOURCES[architecture] || TEMPLATE_SOURCES.redux;
-    
+
     const oldPath = path.join(androidSrcDir, sourceDir);
-    
-    const newPath = path.join(androidSrcDir, projectName.toLowerCase());
+
+    const newPath = path.join(androidSrcRoot, packageIdToPath(newPackageId));
 
     logInfo(`Looking for Android source at: ${oldPath}`);
 
@@ -39,18 +48,14 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
                 if (!file.endsWith(".kt")) {
                     continue;
                 }
-                
+
                 const srcFile = path.join(oldPath, file);
                 const destFile = path.join(newPath, file);
 
                 fs.copyFileSync(srcFile, destFile);
 
-                replaceInFile(
-                    destFile, 
-                    /package\s+com\.[a-zA-Z0-9._]+/g,
-                    `package com.${projectName.toLowerCase()}`
-                );
-                
+                replaceInFile(destFile, /package\s+[a-zA-Z0-9._]+/g, `package ${newPackageId}`);
+
                 replaceInFile(destFile, new RegExp(oldPackageId, "g"), newPackageId);
 
                 const baseFileName = path.basename(file, path.extname(file));
@@ -70,99 +75,105 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
             const buildGradlePath = path.join(projectDir, "android/app/build.gradle");
             if (fs.existsSync(buildGradlePath)) {
                 let content = fs.readFileSync(buildGradlePath, "utf8");
-                
+
                 if (!content.includes("kotlin-android")) {
                     content = content.replace(
                         /apply plugin: "com.android.application"/,
                         'apply plugin: "com.android.application"\napply plugin: "kotlin-android"'
                     );
                 }
-                
-                content = content.replace(
-                    /namespace\s+["'][^"']*zustandrnq[^"']*["']/gi,
-                    `namespace "com.${projectName.toLowerCase()}"`
-                );
-                
-                content = content.replace(
-                    /namespace\s+["'][^"']*["']/gi,
-                    `namespace "com.${projectName.toLowerCase()}"`
-                );
 
-                content = content.replace(
-                    /applicationId\s+["'][^"']*["']/gi,
-                    `applicationId "com.${projectName.toLowerCase()}"`
-                );
-                
-                const baseAppId = `com.${projectName.toLowerCase()}`;
-                const lines = content.split('\n');
-                let inDevFlavor = false;
+                content = content.replace(/namespace\s+["'][^"']*["']/gi, `namespace '${newPackageId}'`);
+
+                content = content.replace(/applicationId\s+["'][^"']*["']/gi, `applicationId '${newPackageId}'`);
+
+                const baseAppId = newPackageId;
+                const lines = content.split("\n");
+                let inDevelopmentFlavor = false;
                 let inStagingFlavor = false;
                 let inProductionFlavor = false;
-                
+
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
-                    
-                    if (line === 'dev {' || (line.startsWith('dev') && line.includes('{'))) {
-                        inDevFlavor = true;
+
+                    if (
+                        line === "dev {" ||
+                        line === "development {" ||
+                        line.startsWith("development ") ||
+                        (line.startsWith("dev") && line.includes("{"))
+                    ) {
+                        inDevelopmentFlavor = true;
                         inStagingFlavor = false;
                         inProductionFlavor = false;
-                    } else if (line === 'staging {' || (line.startsWith('staging') && line.includes('{'))) {
-                        inDevFlavor = false;
-                        inStagingFlavor = true; 
+                    } else if (line === "staging {" || (line.startsWith("staging") && line.includes("{"))) {
+                        inDevelopmentFlavor = false;
+                        inStagingFlavor = true;
                         inProductionFlavor = false;
-                    } else if (line === 'production {' || (line.startsWith('production') && line.includes('{'))) {
-                        inDevFlavor = false;
+                    } else if (line === "production {" || (line.startsWith("production") && line.includes("{"))) {
+                        inDevelopmentFlavor = false;
                         inStagingFlavor = false;
                         inProductionFlavor = true;
-                    } else if (line === '}') {
-                        inDevFlavor = false;
+                    } else if (line === "}") {
+                        inDevelopmentFlavor = false;
                         inStagingFlavor = false;
                         inProductionFlavor = false;
                     }
-                    
-                    if (line.includes('applicationId')) {
-                        if (inDevFlavor) {
-                            lines[i] = lines[i].replace(/applicationId ['"][^'"]+['"]/g, `applicationId '${baseAppId}'`);
+
+                    if (line.includes("applicationId")) {
+                        if (inDevelopmentFlavor) {
+                            lines[i] = lines[i].replace(
+                                /applicationId ['"][^'"]+['"]/g,
+                                `applicationId '${baseAppId}.dev'`
+                            );
                         } else if (inStagingFlavor) {
-                            lines[i] = lines[i].replace(/applicationId ['"][^'"]+['"]/g, `applicationId '${baseAppId}.stg'`);
+                            lines[i] = lines[i].replace(
+                                /applicationId ['"][^'"]+['"]/g,
+                                `applicationId '${baseAppId}.stg'`
+                            );
                         } else if (inProductionFlavor) {
-                            lines[i] = lines[i].replace(/applicationId ['"][^'"]+['"]/g, `applicationId '${baseAppId}.prod'`);
+                            lines[i] = lines[i].replace(
+                                /applicationId ['"][^'"]+['"]/g,
+                                `applicationId '${baseAppId}'`
+                            );
                         }
                     }
-                    
-                    if (line.includes('resValue') && line.includes('build_config_package')) {
-                        if (inDevFlavor) {
-                            lines[i] = lines[i].replace(/resValue ['"]string['"],\s*['"]build_config_package['"],\s*['"][^'"]+['"]/g, 
-                                `resValue 'string', 'build_config_package', '${baseAppId}'`);
+
+                    if (line.includes("resValue") && line.includes("build_config_package")) {
+                        if (inDevelopmentFlavor) {
+                            lines[i] = lines[i].replace(
+                                /resValue ['"]string['"],\s*['"]build_config_package['"],\s*['"][^'"]+['"]/g,
+                                `resValue 'string', 'build_config_package', '${baseAppId}'`
+                            );
                         } else if (inStagingFlavor) {
-                            lines[i] = lines[i].replace(/resValue ['"]string['"],\s*['"]build_config_package['"],\s*['"][^'"]+['"]/g, 
-                                `resValue 'string', 'build_config_package', '${baseAppId}'`);
+                            lines[i] = lines[i].replace(
+                                /resValue ['"]string['"],\s*['"]build_config_package['"],\s*['"][^'"]+['"]/g,
+                                `resValue 'string', 'build_config_package', '${baseAppId}'`
+                            );
                         } else if (inProductionFlavor) {
-                            lines[i] = lines[i].replace(/resValue ['"]string['"],\s*['"]build_config_package['"],\s*['"][^'"]+['"]/g, 
-                                `resValue 'string', 'build_config_package', '${baseAppId}'`);
+                            lines[i] = lines[i].replace(
+                                /resValue ['"]string['"],\s*['"]build_config_package['"],\s*['"][^'"]+['"]/g,
+                                `resValue 'string', 'build_config_package', '${baseAppId}'`
+                            );
                         }
                     }
                 }
-                
-                content = lines.join('\n');
-                
+
+                content = lines.join("\n");
+
                 fs.writeFileSync(buildGradlePath, content);
                 logSuccess("Updated build.gradle with all environment configurations");
-                
-                logInfo(`Application ID (dev): ${baseAppId}`);
+
+                logInfo(`Application ID (development): ${baseAppId}.dev`);
                 logInfo(`Application ID (staging): ${baseAppId}.stg`);
-                logInfo(`Application ID (production): ${baseAppId}.prod`);
+                logInfo(`Application ID (production): ${baseAppId}`);
             }
 
             const manifestPath = path.join(projectDir, "android/app/src/main/AndroidManifest.xml");
             if (fs.existsSync(manifestPath)) {
                 let content = fs.readFileSync(manifestPath, "utf8");
-                
-                content = content.replace(
-                    /package="[^"]+"/g,
-                    `package="com.${projectName.toLowerCase()}"`
-                );
-                
+
+                content = content.replace(/package="[^"]+"/g, `package="${newPackageId}"`);
+
                 fs.writeFileSync(manifestPath, content);
                 logSuccess("Updated AndroidManifest.xml");
             }
@@ -170,61 +181,74 @@ function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName,
             const settingsPath = path.join(projectDir, "android/settings.gradle");
             if (fs.existsSync(settingsPath)) {
                 let content = fs.readFileSync(settingsPath, "utf8");
-                
+
                 content = content.replace(
                     /rootProject\.name\s*=\s*['"][^'"]*['"]/g,
                     `rootProject.name = '${projectName}'`
                 );
-                
+
                 fs.writeFileSync(settingsPath, content);
                 logSuccess("Updated settings.gradle");
             }
 
-            try {                
-                const searchAndReplaceZustandRNQ = (dir) => {
-                    const entries = fs.readdirSync(dir, { withFileTypes: true });
-                    for (const entry of entries) {
-                        const fullPath = path.join(dir, entry.name);
-                        
-                        if (fullPath.includes('node_modules') || fullPath.includes('.git') || 
-                            fullPath.includes('build') || fullPath.includes('.gradle')) {
-                            continue;
-                        }
-                        
-                        if (entry.isDirectory()) {
-                            searchAndReplaceZustandRNQ(fullPath);
-                        } else {
-                            const relevantExtensions = [
-                                '.kt', '.java', '.xml', '.gradle', '.properties', 
-                                '.json', '.pro', '.txt', '.md', '.yaml', '.yml'
-                            ];
-                            
-                            if (relevantExtensions.some(ext => entry.name.toLowerCase().endsWith(ext))) {
-                                try {
-                                    let content = fs.readFileSync(fullPath, "utf8");
-                                    
-                                    if (content.toLowerCase().includes("zustandrnq")) {
-                                        const modifiedContent = content
-                                            .replace(/[Zz]ustandRNQ/g, "")
-                                            .replace(/zustandrnq/gi, "");
-                                            
-                                        if (content !== modifiedContent) {
-                                            fs.writeFileSync(fullPath, modifiedContent);
+            if (architecture !== "zustand") {
+                try {
+                    const searchAndReplaceZustandRNQ = (dir) => {
+                        const entries = fs.readdirSync(dir, { withFileTypes: true });
+                        for (const entry of entries) {
+                            const fullPath = path.join(dir, entry.name);
+
+                            if (
+                                fullPath.includes("node_modules") ||
+                                fullPath.includes(".git") ||
+                                fullPath.includes("build") ||
+                                fullPath.includes(".gradle")
+                            ) {
+                                continue;
+                            }
+
+                            if (entry.isDirectory()) {
+                                searchAndReplaceZustandRNQ(fullPath);
+                            } else {
+                                const relevantExtensions = [
+                                    ".kt",
+                                    ".java",
+                                    ".xml",
+                                    ".gradle",
+                                    ".properties",
+                                    ".json",
+                                    ".pro",
+                                    ".txt",
+                                    ".md",
+                                    ".yaml",
+                                    ".yml"
+                                ];
+
+                                if (relevantExtensions.some((ext) => entry.name.toLowerCase().endsWith(ext))) {
+                                    try {
+                                        let content = fs.readFileSync(fullPath, "utf8");
+
+                                        if (content.toLowerCase().includes("zustandrnq")) {
+                                            const modifiedContent = content
+                                                .replace(/[Zz]ustandRNQ/g, "")
+                                                .replace(/zustandrnq/gi, "");
+
+                                            if (content !== modifiedContent) {
+                                                fs.writeFileSync(fullPath, modifiedContent);
+                                            }
                                         }
-                                    }
-                                } catch (error) {
+                                    } catch (error) {}
                                 }
                             }
                         }
-                    }
-                };
-                
-                const androidDir = path.join(projectDir, "android");
-                searchAndReplaceZustandRNQ(androidDir);
-            } catch (error) {
-                logError(`Error during deep scan: ${error.message}`);
-            }
+                    };
 
+                    const androidDir = path.join(projectDir, "android");
+                    searchAndReplaceZustandRNQ(androidDir);
+                } catch (error) {
+                    logError(`Error during deep scan: ${error.message}`);
+                }
+            }
         } catch (error) {
             logError("Error updating Android files", error);
             throw error;

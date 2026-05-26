@@ -11,38 +11,122 @@ const TEMPLATE_PACKAGE_IDS = {
     zustand: "com.newreactnativezustandrnq"
 };
 
+function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function updateTemplateIdentifiers(projectDir, oldName, projectName, oldPackageId, newPackageId, architecture) {
+    const fileExtensions = [
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".java",
+        ".kt",
+        ".swift",
+        ".m",
+        ".h",
+        ".gradle",
+        ".pbxproj",
+        ".plist",
+        ".xml",
+        ".yaml",
+        ".yml",
+        ".xcscheme",
+        ".xcworkspacedata",
+        ".storyboard",
+        ".xib",
+        ".podspec",
+        ".json",
+        ".md",
+        ".cjs"
+    ];
+
+    if (architecture === "zustand") {
+        findAndReplaceInDirectory(
+            projectDir,
+            new RegExp(escapeRegExp(oldPackageId), "g"),
+            newPackageId,
+            fileExtensions
+        );
+        findAndReplaceInDirectory(projectDir, new RegExp(escapeRegExp(oldName), "g"), projectName, fileExtensions);
+        findAndReplaceInDirectory(
+            projectDir,
+            new RegExp(escapeRegExp(oldName.toLowerCase()), "g"),
+            projectName.toLowerCase(),
+            fileExtensions
+        );
+        findAndReplaceInDirectory(projectDir, /new-react-native-zustand-react-query/g, projectName, fileExtensions);
+        return;
+    }
+
+    findAndReplaceInDirectory(projectDir, /NewReactNative/g, projectName, fileExtensions);
+    findAndReplaceInDirectory(projectDir, /newreactnative/g, projectName.toLowerCase(), fileExtensions);
+    findAndReplaceInDirectory(projectDir, new RegExp(escapeRegExp(oldPackageId), "g"), newPackageId, fileExtensions);
+}
+
+function replaceRunnerVariantValue(contents, variantName, key, value) {
+    const pattern = new RegExp(`(${variantName}:\\s*\\{[\\s\\S]*?${key}:\\s*')[^']*(')`);
+    return contents.replace(pattern, `$1${value}$2`);
+}
+
+function updateZustandRunNativeScript(projectDir, projectName, packageId) {
+    const runNativePath = path.join(projectDir, "scripts/run-native.cjs");
+
+    if (!fs.existsSync(runNativePath)) {
+        return;
+    }
+
+    let contents = fs.readFileSync(runNativePath, "utf8");
+
+    contents = replaceRunnerVariantValue(contents, "development", "androidAppId", `${packageId}.dev`);
+    contents = replaceRunnerVariantValue(contents, "staging", "androidAppId", `${packageId}.stg`);
+    contents = replaceRunnerVariantValue(contents, "production", "androidAppId", packageId);
+    contents = replaceRunnerVariantValue(contents, "development", "iosScheme", projectName);
+
+    fs.writeFileSync(runNativePath, contents);
+    logSuccess("Updated scripts/run-native.cjs");
+}
+
 function setupNewProject(projectDir, projectName, oldName, bundleId, architecture) {
     logStep("Setting up new project...");
 
     try {
         const baseAppId = `com.${projectName.toLowerCase()}`;
-        
+        const basePackageId = bundleId || baseAppId;
+
         const packageJsonPath = path.join(projectDir, "package.json");
         if (fs.existsSync(packageJsonPath)) {
             try {
                 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-                
+
                 packageJson.name = projectName;
-                
+
                 if (packageJson.scripts) {
                     const oldAppId = TEMPLATE_PACKAGE_IDS[architecture] || TEMPLATE_PACKAGE_IDS.redux;
-                    
+
                     if (packageJson.scripts.android) {
-                        packageJson.scripts.android = packageJson.scripts.android
-                            .replace(new RegExp(oldAppId, 'g'), baseAppId);
+                        packageJson.scripts.android = packageJson.scripts.android.replace(
+                            new RegExp(escapeRegExp(oldAppId), "g"),
+                            basePackageId
+                        );
                     }
-                    
+
                     if (packageJson.scripts["android:stg"]) {
-                        packageJson.scripts["android:stg"] = packageJson.scripts["android:stg"]
-                            .replace(new RegExp(`${oldAppId}\\.stg`, 'g'), `${baseAppId}.stg`);
+                        packageJson.scripts["android:stg"] = packageJson.scripts["android:stg"].replace(
+                            new RegExp(`${escapeRegExp(oldAppId)}\\.stg`, "g"),
+                            `${basePackageId}.stg`
+                        );
                     }
-                    
+
                     if (packageJson.scripts["android:prod"]) {
-                        packageJson.scripts["android:prod"] = packageJson.scripts["android:prod"]
-                            .replace(new RegExp(`${oldAppId}\\.production`, 'g'), `${baseAppId}.prod`);
+                        packageJson.scripts["android:prod"] = packageJson.scripts["android:prod"].replace(
+                            new RegExp(`${escapeRegExp(oldAppId)}(\\.production|\\.prod)?`, "g"),
+                            basePackageId
+                        );
                     }
                 }
-                
+
                 fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
                 logSuccess("Updated package.json");
             } catch (error) {
@@ -54,19 +138,19 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
         if (fs.existsSync(appJsonPath)) {
             try {
                 const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf8"));
-                
+
                 appJson.name = projectName;
-                
+
                 if (appJson.displayName) {
                     appJson.displayName = projectName;
                 }
-                if(appJson.ios) {
-                   appJson.ios.bundleIdentifier = 'com.' + projectName.toLowerCase();
+                if (appJson.ios) {
+                    appJson.ios.bundleIdentifier = basePackageId;
                 }
-                if(appJson.android) {
-                    appJson.android.package = 'com.' + projectName.toLowerCase();
+                if (appJson.android) {
+                    appJson.android.package = basePackageId;
                 }
-                
+
                 fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2));
                 logSuccess("Updated app.json");
             } catch (error) {
@@ -74,27 +158,18 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
             }
         }
 
-        const fileExtensions = [
-            ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".swift",
-            ".m", ".h", ".gradle", ".pbxproj", ".plist", ".xml",
-            ".yaml", ".yml", ".xcscheme", ".xcworkspacedata",
-            ".storyboard", ".xib", ".podspec"
-        ];
-
-    
-        findAndReplaceInDirectory(projectDir, /NewReactNative/g, projectName, fileExtensions);
-        findAndReplaceInDirectory(projectDir, /newreactnative/g, projectName.toLowerCase(), fileExtensions);
-
-        const baseAndroidId = bundleId || baseAppId;
-        const baseIosId = bundleId || projectName.toLowerCase();
-
         const oldPackageId = TEMPLATE_PACKAGE_IDS[architecture] || TEMPLATE_PACKAGE_IDS.redux;
+        updateTemplateIdentifiers(projectDir, oldName, projectName, oldPackageId, basePackageId, architecture);
+
+        if (architecture === "zustand") {
+            updateZustandRunNativeScript(projectDir, projectName, basePackageId);
+        }
 
         logStep("Updating Android configuration...");
-        updateAndroidFiles(projectDir, oldPackageId, baseAndroidId, projectName, architecture);
+        updateAndroidFiles(projectDir, oldPackageId, basePackageId, projectName, architecture);
 
         logStep("Updating iOS configuration...");
-        updateIOSProjectFiles(projectDir, oldName, projectName, baseIosId, architecture);
+        updateIOSProjectFiles(projectDir, oldName, projectName, basePackageId, architecture);
 
         updateReadmeFile(projectDir, projectName, architecture);
 
@@ -109,11 +184,11 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
 function updateReadmeFile(projectDir, projectName, architecture) {
     logStep("Updating README.md...");
     const readmePath = path.join(projectDir, "README.md");
-    
+
     if (fs.existsSync(readmePath)) {
         try {
             let content = fs.readFileSync(readmePath, "utf8");
-            
+
             const patterns = {
                 zustand: [
                     {
@@ -154,7 +229,7 @@ function updateReadmeFile(projectDir, projectName, architecture) {
                     },
                     {
                         find: /applicationId 'com\.newreactnativezustandrnq\.production'/g,
-                        replace: `applicationId 'com.${projectName.toLowerCase()}.production'`
+                        replace: `applicationId 'com.${projectName.toLowerCase()}'`
                     },
                     {
                         find: /--app-id com\.newreactnativezustandrnq/g,
@@ -166,7 +241,7 @@ function updateReadmeFile(projectDir, projectName, architecture) {
                     },
                     {
                         find: /--app-id com\.newreactnativezustandrnq\.production/g,
-                        replace: `--app-id com.${projectName.toLowerCase()}.production`
+                        replace: `--app-id com.${projectName.toLowerCase()}`
                     }
                 ],
                 redux: [
@@ -214,23 +289,23 @@ function updateReadmeFile(projectDir, projectName, architecture) {
                     }
                 ]
             };
-            
+
             const commonPatterns = [
                 {
                     find: /### Clone the repository.*?git clone https:\/\/github\.com\/linhnguyen-gt\/[^\n]*\s*cd [^\n]*\s*```/gs,
                     replace: ``
                 }
             ];
-            
+
             const replacements = patterns[architecture] || patterns.redux;
             replacements.forEach(({ find, replace }) => {
                 content = content.replace(find, replace);
             });
-            
+
             commonPatterns.forEach(({ find, replace }) => {
                 content = content.replace(find, replace);
             });
-            
+
             if (!content.includes("Created with [Linh Nguyen]")) {
                 content += `\n\n## Created with [Linh Nguyen](https://github.com/linhnguyen-gt).\n`;
             }
@@ -256,7 +331,7 @@ function cleanupProject(projectDir) {
         "yarn-error.log",
         ".env.vault",
         "create-rn-with-redux-project",
-        "package-lock.json",
+        "package-lock.json"
     ];
 
     for (const item of tempDirsToRemove) {
