@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const { replaceInFile } = require("../utils/fileUtils");
 const { logSuccess, logWarning, logInfo, logStep, logError } = require("../utils/logUtils");
+const { assertValidProjectName } = require("../utils/project-name");
+const { assertValidBundleId } = require("../utils/bundle-id");
 
 const TEMPLATE_SOURCES = {
     redux: "newreactnative",
@@ -15,17 +17,8 @@ function packageIdToPath(packageId) {
 function updateAndroidFiles(projectDir, oldPackageId, newPackageId, projectName, architecture) {
     logStep("Updating Android files...");
 
-    if (!/^[A-Z][a-z]*(?:[A-Z][a-z]*)*$/.test(projectName)) {
-        throw new Error(
-            `Invalid Android project name "${projectName}". Name must be in PascalCase format (e.g., MyApp, MyReactApp).`
-        );
-    }
-
-    if (!/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$/.test(newPackageId)) {
-        throw new Error(
-            `Invalid Android package ID "${newPackageId}". Package ID must follow Java package naming conventions (e.g., com.example.myapp).`
-        );
-    }
+    assertValidProjectName(projectName, "Android project");
+    assertValidBundleId(newPackageId);
 
     const androidSrcRoot = path.join(projectDir, "android/app/src/main/java");
     const androidSrcDir = path.join(androidSrcRoot, "com");

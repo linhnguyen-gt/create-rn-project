@@ -1,10 +1,11 @@
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
-const { logSuccess, logError, logWarning, logStep } = require("../utils/logUtils");
+const { logSuccess, logError, logInfo, logStep } = require("../utils/logUtils");
 const { updateAndroidFiles } = require("../android/androidManager");
 const { updateIOSProjectFiles } = require("../ios/iosManager");
 const { findAndReplaceInDirectory } = require("../utils/fileUtils");
+const { assertValidProjectName } = require("../utils/project-name");
+const { assertValidBundleId } = require("../utils/bundle-id");
 
 const TEMPLATE_PACKAGE_IDS = {
     redux: "com.newreactnative",
@@ -39,7 +40,10 @@ function updateTemplateIdentifiers(projectDir, oldName, projectName, oldPackageI
         ".podspec",
         ".json",
         ".md",
-        ".cjs"
+        ".cjs",
+        // Both templates ship `scripts/lib/*.d.cts` sidecars so TypeScript can type the
+        // CommonJS module that holds the identifiers.
+        ".cts"
     ];
 
     if (architecture === "zustand") {
@@ -60,72 +64,53 @@ function updateTemplateIdentifiers(projectDir, oldName, projectName, oldPackageI
         return;
     }
 
+    // Package id before bare name. `com.newreactnative` contains `newreactnative`, so
+    // replacing the bare name first leaves nothing for the package-id pattern to match and
+    // --bundle-id is silently dropped — the project builds, with the wrong identifier.
+    findAndReplaceInDirectory(projectDir, new RegExp(escapeRegExp(oldPackageId), "g"), newPackageId, fileExtensions);
     findAndReplaceInDirectory(projectDir, /NewReactNative/g, projectName, fileExtensions);
     findAndReplaceInDirectory(projectDir, /newreactnative/g, projectName.toLowerCase(), fileExtensions);
-    findAndReplaceInDirectory(projectDir, new RegExp(escapeRegExp(oldPackageId), "g"), newPackageId, fileExtensions);
 }
 
-function replaceRunnerVariantValue(contents, variantName, key, value) {
-    const pattern = new RegExp(`(${variantName}:\\s*\\{[\\s\\S]*?${key}:\\s*')[^']*(')`);
-    return contents.replace(pattern, `$1${value}$2`);
-}
-
-function updateZustandRunNativeScript(projectDir, projectName, packageId) {
-    const runNativePath = path.join(projectDir, "scripts/run-native.cjs");
-
-    if (!fs.existsSync(runNativePath)) {
-        return;
-    }
-
-    let contents = fs.readFileSync(runNativePath, "utf8");
-
-    contents = replaceRunnerVariantValue(contents, "development", "androidAppId", `${packageId}.dev`);
-    contents = replaceRunnerVariantValue(contents, "staging", "androidAppId", `${packageId}.stg`);
-    contents = replaceRunnerVariantValue(contents, "production", "androidAppId", packageId);
-    contents = replaceRunnerVariantValue(contents, "development", "iosScheme", projectName);
-
-    fs.writeFileSync(runNativePath, contents);
-    logSuccess("Updated scripts/run-native.cjs");
+/**
+ * Whether the template ships native projects in git, as opposed to generating them.
+ *
+ * Under Continuous Native Generation `ios/` and `android/` are gitignored build output, so a
+ * fresh clone has neither and the rename machinery has nothing to act on.
+ */
+function hasCommittedNativeProjects(projectDir) {
+    return fs.existsSync(path.join(projectDir, "ios")) || fs.existsSync(path.join(projectDir, "android"));
 }
 
 function setupNewProject(projectDir, projectName, oldName, bundleId, architecture) {
     logStep("Setting up new project...");
 
     try {
+        // Validated here, not only inside the native renamers. Those are skipped entirely for
+        // a Continuous Native Generation template, which left the only check on that path
+        // being the CLI's own argument parsing — so any other caller could generate a project
+        // with an unusable name and see nothing go wrong.
+        assertValidProjectName(projectName);
+
         const baseAppId = `com.${projectName.toLowerCase()}`;
         const basePackageId = bundleId || baseAppId;
+
+        // Same reason as the name above: `updateAndroidFiles` used to be the only thing
+        // checking this, and it does not run for a Continuous Native Generation template. A
+        // malformed `--bundle-id` was written straight into the generated project's config and
+        // only surfaced at build time. The derived default cannot fail this — the name is
+        // already PascalCase letters — so in practice it guards the `--bundle-id` path.
+        assertValidBundleId(basePackageId);
 
         const packageJsonPath = path.join(projectDir, "package.json");
         if (fs.existsSync(packageJsonPath)) {
             try {
                 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
+                // Only the name. Both templates launch through a script that reads the
+                // variant table, so no `--app-id` literal survives in `scripts` for the CLI
+                // to rewrite.
                 packageJson.name = projectName;
-
-                if (packageJson.scripts) {
-                    const oldAppId = TEMPLATE_PACKAGE_IDS[architecture] || TEMPLATE_PACKAGE_IDS.redux;
-
-                    if (packageJson.scripts.android) {
-                        packageJson.scripts.android = packageJson.scripts.android.replace(
-                            new RegExp(escapeRegExp(oldAppId), "g"),
-                            basePackageId
-                        );
-                    }
-
-                    if (packageJson.scripts["android:stg"]) {
-                        packageJson.scripts["android:stg"] = packageJson.scripts["android:stg"].replace(
-                            new RegExp(`${escapeRegExp(oldAppId)}\\.stg`, "g"),
-                            `${basePackageId}.stg`
-                        );
-                    }
-
-                    if (packageJson.scripts["android:prod"]) {
-                        packageJson.scripts["android:prod"] = packageJson.scripts["android:prod"].replace(
-                            new RegExp(`${escapeRegExp(oldAppId)}(\\.production|\\.prod)?`, "g"),
-                            basePackageId
-                        );
-                    }
-                }
 
                 fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
                 logSuccess("Updated package.json");
@@ -144,12 +129,11 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
                 if (appJson.displayName) {
                     appJson.displayName = projectName;
                 }
-                if (appJson.ios) {
-                    appJson.ios.bundleIdentifier = basePackageId;
-                }
-                if (appJson.android) {
-                    appJson.android.package = basePackageId;
-                }
+
+                // Bundle identifiers deliberately not written here. Both templates reduced
+                // app.json to `{ name }` and moved identity into scripts/lib/variant-config.cjs,
+                // which the generic replacement covers. Writing them back would recreate the
+                // second source of truth the templates just removed.
 
                 fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2));
                 logSuccess("Updated app.json");
@@ -161,23 +145,32 @@ function setupNewProject(projectDir, projectName, oldName, bundleId, architectur
         const oldPackageId = TEMPLATE_PACKAGE_IDS[architecture] || TEMPLATE_PACKAGE_IDS.redux;
         updateTemplateIdentifiers(projectDir, oldName, projectName, oldPackageId, basePackageId, architecture);
 
-        if (architecture === "zustand") {
-            updateZustandRunNativeScript(projectDir, projectName, basePackageId);
+        // Continuous Native Generation templates ship no ios/ or android/ — they are produced
+        // by `expo prebuild` at build time, so there is nothing to rename yet. Detecting this
+        // beats keying on the architecture name: either template may adopt CNG later, and
+        // guessing wrong fails silently, shipping a project full of template identifiers.
+        if (hasCommittedNativeProjects(projectDir)) {
+            logStep("Updating Android configuration...");
+            updateAndroidFiles(projectDir, oldPackageId, basePackageId, projectName, architecture);
+
+            logStep("Updating iOS configuration...");
+            updateIOSProjectFiles(projectDir, oldName, projectName, basePackageId, architecture);
+        } else {
+            logInfo("No native projects to rename — they are generated by `expo prebuild`.");
         }
-
-        logStep("Updating Android configuration...");
-        updateAndroidFiles(projectDir, oldPackageId, basePackageId, projectName, architecture);
-
-        logStep("Updating iOS configuration...");
-        updateIOSProjectFiles(projectDir, oldName, projectName, basePackageId, architecture);
 
         updateReadmeFile(projectDir, projectName, architecture);
 
         logSuccess("Project setup completed successfully");
-        return true;
     } catch (error) {
+        // Rethrow rather than returning a status nobody checked.
+        //
+        // This used to `return false`, and the only caller discarded it — so a throw from the
+        // iOS or Android rename skipped every remaining step and generation still ran on to
+        // install, cleanup and a green success banner, leaving a half-renamed project that
+        // looked fine. A partially set-up project is not a project.
         logError("Error setting up project", error);
-        return false;
+        throw error;
     }
 }
 
@@ -321,16 +314,20 @@ function updateReadmeFile(projectDir, projectName, architecture) {
 function cleanupProject(projectDir) {
     logStep("Cleaning up project...");
 
+    // Build caches and stray lockfiles a clone may carry.
+    //
+    // `.env.vault` stays even though both templates have dropped dotenv-vault: it is an
+    // encrypted copy of the template author's environments, and deleting it here costs one
+    // line while leaving it in a generated project ships someone else's secrets. A defensive
+    // removal is worth keeping past the point where the template stopped producing it.
     const tempDirsToRemove = [
         ".expo-shared",
         ".expo",
-        ".serena",
         "expo-debug.log",
         "npm-debug.log",
         "yarn-debug.log",
         "yarn-error.log",
         ".env.vault",
-        "create-rn-with-redux-project",
         "package-lock.json"
     ];
 

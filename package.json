@@ -28,6 +28,8 @@
     "license": "MIT",
     "scripts": {
         "format": "prettier --write .",
-        "format:check": "prettier --check ."
+        "format:check": "prettier --check .",
+        "probe": "node scripts/probe-template.js",
+        "probe:all": "node scripts/probe-template.js --all"
     }
 }

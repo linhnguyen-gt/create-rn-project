@@ -19,8 +19,12 @@ yarn-error.log
 # Build outputs
 dist/
 build/
-lib/
+# Root-scoped: a bare `lib/` also matches `scripts/lib/`, which is source, not output.
+/lib/
 out/
+
+# Plans
+plans/
 
 # IDE and editors
 .idea/
@@ -55,3 +59,4 @@ Thumbs.db
 
 # Package files
 *.tgz
+plans/

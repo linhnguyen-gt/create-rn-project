@@ -6,7 +6,7 @@ function initializeGit() {
 
     try {
         execSync("rm -rf .git", { stdio: "inherit" });
-        
+
         execSync("git init", { stdio: "inherit" });
         execSync("git add .", { stdio: "inherit" });
         execSync('git commit -m "Initial commit from template"', { stdio: "inherit" });

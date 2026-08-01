@@ -47,7 +47,9 @@ create-rn-project MyApp -a zustand
 create-rn-project MyApp -a redux
 ```
 
-Templates are always cloned from the latest `main` branch. Version or branch selection with `MyApp@branch` is not supported.
+Templates are cloned from their latest release — the highest semver tag on the template
+repository, prereleases excluded. A template with no release tag yet falls back to `main`, with
+a warning. Version or branch selection with `MyApp@branch` is not supported.
 
 ```bash
 create-rn-project MyApp -a zustand
@@ -81,24 +83,49 @@ create-rn-project MyApp com.example.myapp
 - `-b, --bundle-id <id>`: Base bundle/package identifier. Defaults to `com.<project-name>`.
 - `-r, --repo <url>`: Git remote URL for the generated project.
 - `--skip-install`: Skip dependency installation.
-- `--use-npm`: Use npm instead of the template package manager. This is not allowed for the Zustand template.
 - `--skip-env-setup`: Skip the template environment setup script.
 - `--skip-git`: Skip Git initialization.
 - `--help`: Show CLI help.
 
 ## Package Manager Behavior
 
-The CLI detects the package manager from the cloned template:
+**Both templates require `pnpm`.** They pin it through `packageManager` in `package.json` and
+rely on pnpm-only workspace settings — a hoisted node linker, `overrides`, and
+`patchedDependencies`. npm and Yarn ignore all of it, producing a project that installs
+successfully and then fails during a build, with an error that points anywhere but at the
+package manager.
 
-- `packageManager` in `package.json`
-- lockfiles such as `pnpm-lock.yaml`, `yarn.lock`, or `package-lock.json`
-- fallback to `yarn` for older templates
+If `pnpm` is missing, the CLI offers to enable Corepack before continuing.
 
-The current Zustand template uses `pnpm`, so generated next steps use `pnpm install`, `pnpm env:setup`, `pnpm ios`, and `pnpm android`.
+`--use-npm` was removed for this reason. Passing it now fails with an explanation rather than
+silently generating a broken project.
 
-The Zustand template requires `pnpm`. If `pnpm` is missing, the CLI asks whether it should enable Corepack before continuing.
+## Environments
 
-Use `--use-npm` only when you intentionally want to override a template package manager that supports npm. The Redux template still uses Yarn by default.
+Both templates manage environment values through EAS:
+
+```bash
+pnpm env:setup   # scaffold .env, .env.staging, .env.production locally
+pnpm env:pull    # pull values from EAS
+pnpm env:push    # push values to EAS
+```
+
+Only `env:setup` is needed to run the app. The pull/push commands need an EAS project, and
+the templates deliberately ship none — run `npx eas init` in the generated project so it owns
+its own project id rather than inheriting a shared one.
+
+## Development
+
+The CLI is verified against both templates by generating a project and asserting the result:
+
+```bash
+pnpm probe:all                                   # clone both templates at their latest release
+pnpm probe --arch redux --source ../new-react-native   # test an unpushed template change
+```
+
+`--source` reads a local checkout's tracked files at their working-tree contents, so template
+changes can be tested before they are committed or pushed. Run `pnpm probe:all` before
+publishing a new version.
 
 ## Zustand Template Output
 

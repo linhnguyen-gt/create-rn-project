@@ -4,6 +4,7 @@ const { execSync } = require("child_process");
 const { replaceInFile } = require("../utils/fileUtils");
 const { logSuccess, logWarning, logStep, logError } = require("../utils/logUtils");
 const { updateIOSSchemes } = require("./schemeManager");
+const { assertValidProjectName } = require("../utils/project-name");
 
 const TEMPLATE_NAMES = {
     redux: "NewReactNative",
@@ -17,11 +18,7 @@ function escapeRegExp(value) {
 function updateIOSProjectFiles(projectDir, oldName, newName, newPackageId, architecture) {
     logStep("Updating iOS project files...");
 
-    if (!/^[A-Z][a-z]*(?:[A-Z][a-z]*)*$/.test(newName)) {
-        throw new Error(
-            `Invalid iOS project name "${newName}". Name must be in PascalCase format (e.g., MyApp, MyReactApp).`
-        );
-    }
+    assertValidProjectName(newName, "iOS project");
 
     const iosDir = path.join(projectDir, "ios");
 
